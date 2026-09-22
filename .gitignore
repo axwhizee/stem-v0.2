@@ -1,0 +1,6 @@
+plan.md
+prompts.md
+node_modules/
+.stem/
+reference/
+*.log
