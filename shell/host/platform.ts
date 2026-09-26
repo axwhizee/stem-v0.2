@@ -3,6 +3,12 @@
 
 import { createSystem, restoreInstances, restoreEnvelopes, type StemSystem } from '../../src/core/boot/index.ts'
 import { createMailListTool, createMailSendTool } from '../../src/core/tools/internal/index.ts'
+import { loadAgentClassDir } from '../../extension/agent/index.ts'
+import { createCortexStrategy } from '../../extension/strategy/index.ts'
+import { createReadTool } from '../../extension/tools/read.ts'
+import { createBashTool } from '../../extension/tools/bash.ts'
+import { createClassicStrategy, createNoneStrategy } from '../../src/core/context/index.ts'
+import { join } from 'node:path'
 import { DefaultRuntime } from '../../src/core/runtime/index.ts'
 import { createPilot, type Pilot } from '../../src/core/pilot/index.ts'
 import type { PilotEvent } from '../../src/core/events/index.ts'
@@ -18,6 +24,7 @@ import {
   ensureSpace,
   loadStemConfig,
   resolveProjectRoot,
+  stemDir,
 } from './config.ts'
 import { createSqliteStores } from './store.ts'
 
@@ -63,23 +70,44 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
 
   const stores =
     opts.stateStore === false ? undefined : createSqliteStores(defaultDbFile(opts.projectRoot))
-  void (opts.shellRunner === false
-    ? undefined
-    : (opts.shellRunner ?? createNodeShellRunner({ defaultCwd: opts.projectRoot })))
 
   const timer = opts.timer ?? defaultTimer()
   const access = opts.access ?? allowAll()
 
   let runtime!: DefaultRuntime
 
+  // 类目录真相：extension/agent + .stem/agent
+  const classDirs = [join(opts.projectRoot, 'extension', 'agent'), join(stemDir(opts.projectRoot), 'agent')]
+  const classIssues: string[] = []
+  const extraClasses: { name: string; genes: import('../../src/core/model/index.ts').ClassGenes }[] = []
+  for (const dir of classDirs) {
+    const { classes, issues } = loadAgentClassDir(dir)
+    for (const i of issues) classIssues.push(`${i.file}: ${i.detail}`)
+    for (const c of classes) extraClasses.push({ name: c.name, genes: c.genes })
+  }
+
+  const shellRunner =
+    opts.shellRunner === false
+      ? undefined
+      : (opts.shellRunner ?? createNodeShellRunner({ defaultCwd: opts.projectRoot }))
+
   const system = await createSystem({
     gateway,
     timer,
     access,
-    tools: [...(opts.hostTools ?? [])],
+    tools: [
+      ...(opts.hostTools ?? []),
+      createReadTool(),
+      ...(shellRunner ? [createBashTool(shellRunner)] : []),
+    ],
     toolFactories: ({ post }) => [
       createMailSendTool({ post }),
       createMailListTool({ post }),
+    ],
+    strategies: [
+      createClassicStrategy(),
+      createNoneStrategy(),
+      createCortexStrategy({ homeRoot: join(stemDir(opts.projectRoot), 'home') }),
     ],
     stamp: config.context?.stamp ?? { source: true },
     logSink: {
@@ -123,6 +151,12 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
   })
 
   if (opts.onEvent) system.events.on(opts.onEvent)
+
+  for (const i of classIssues) console.warn(`[stem] class: ${i}`)
+  for (const c of extraClasses) {
+    const err = system.kernel.registerClass({ name: c.name, genes: c.genes })
+    if (err) console.warn(`[stem] class ${c.name}: ${err.kind}`)
+  }
 
   // 恢复：实例拓扑序重放 + 语料载箱
   if (stores) {

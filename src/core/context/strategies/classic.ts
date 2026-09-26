@@ -1,35 +1,59 @@
-// classic —— 有效序直出；水位可触发 compact（process）。
+// classic —— 有效序直出；水位可触发 compact（可注入 complete 做摘要，缺省基线占位）。
 
 import type { ContextStrategy, CorpusView, OrchestrateResult, Trigger } from '../types.ts'
 import { projectMessages } from '../stamp.ts'
 import { validateSequence, type Message } from '../../model/index.ts'
 
-export function createClassicStrategy(options?: {
-  /** 水位阈值；达到时 process 做 compact（摘要暂存语义由宿主补全） */
+export type ClassicOptions = {
   readonly compactAt?: number
-}): ContextStrategy {
+  /** ToolAgent.complete 等摘要端口 */
+  readonly complete?: (prompt: string) => Promise<string>
+}
+
+export function createClassicStrategy(options?: ClassicOptions): ContextStrategy {
   const compactAt = options?.compactAt ?? Number.POSITIVE_INFINITY
+  const complete = options?.complete
 
   return {
     name: 'classic',
     orchestrate(view: CorpusView, trigger: Trigger): OrchestrateResult {
       const messages = projectMessages(view.envelopes, view.stamp)
-      const err = validateSequence(messages)
-      if (err) {
-        // 投影应恒合法；若语料本身未决未闭，返回空投影让上层等待
-        return { messages: [] }
-      }
+      if (validateSequence(messages)) return { messages: [] }
       void trigger
       return { messages }
     },
     async process(view: CorpusView): Promise<OrchestrateResult | undefined> {
       if (view.ctxTokens < compactAt) return undefined
-      // 紧凑基线：保留头尾、中间以摘要占位（摘要生成由 complete/宿主注入）
       const messages = projectMessages(view.envelopes, view.stamp)
-      const compacted = compactBaseline(messages)
+      const compacted = complete
+        ? await compactWithComplete(messages, complete)
+        : compactBaseline(messages)
       return { messages: compacted, ready: 'watermark' }
     },
     note: 'You are participating in a stem multi-agent system.',
+  }
+}
+
+async function compactWithComplete(
+  messages: readonly Message[],
+  complete: (prompt: string) => Promise<string>,
+): Promise<Message[]> {
+  if (messages.length <= 8) return [...messages]
+  const head = messages.slice(0, 3)
+  const tail = messages.slice(-3)
+  const midRaw = messages.slice(3, -3)
+  const text = midRaw
+    .map((m) => m.content.map((p) => (p.type === 'text' ? p.text : `[${p.type}]`)).join(''))
+    .join('\n')
+  try {
+    const summary = await complete(`Compress the following dialogue into bullet notes:\n${text}`)
+    return [
+      ...head,
+      { kind: 'user', content: [{ type: 'text', text: `…[compacted]\n${summary}` }] },
+      ...tail,
+    ]
+  } catch {
+    return compactBaseline(messages)
   }
 }
 
@@ -42,7 +66,6 @@ function compactBaseline(messages: readonly Message[]): Message[] {
     kind: 'user',
     content: [{ type: 'text', text: `…[earlier ${messages.length - 6} messages compacted]…` }],
   }
-  // head 后必须能接 user：若 head 末是 assistant 可接 user；若是 tool 序列需谨慎
   const lastHead = head[head.length - 1]
   if (lastHead && lastHead.kind === 'assistant') {
     return [...head, mid, ...tail]
