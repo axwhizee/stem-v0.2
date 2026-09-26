@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { join, dirname } from 'node:path'
 import { bootStem, resolveProjectRoot, type BootResult } from '../host/index.ts'
 import { providerFetch } from '../host/gateway.ts'
+import { parseStemConfig } from '../../src/core/config/index.ts'
 import { makeAgentID, parentIdOf, ROOT_AGENT_ID, textContent } from '../../src/core/model/index.ts'
 import type { PilotEvent } from '../../src/core/events/index.ts'
 import { parseModelRef } from '../../src/core/gateway/index.ts'
@@ -109,16 +110,19 @@ async function listModels(boot: BootResult): Promise<{ refs: string[]; openEnded
   void boot
   const refs = new Set<string>()
   const openEnded: string[] = []
-  const cfg = JSON.parse(
+  const cfg = parseStemConfig(
     readFileSync(join(PROJECT_ROOT, '.stem', 'stem.jsonc'), 'utf8'),
-  ) as { providers?: Record<string, { baseUrl?: string; apiKeyEnv?: string; models?: string[] }> }
+  )
+  if ('kind' in cfg) return { refs: [], openEnded: [] }
   for (const [name, p] of Object.entries(cfg.providers ?? {})) {
     for (const m of p.models ?? []) refs.add(`${name}/${m}`)
     if (!p.models || p.models.length === 0) openEnded.push(name)
-    if (!p.baseUrl) continue
+    const baseUrl = p.base_url
+    if (!baseUrl) continue
     try {
-      const key = p.apiKeyEnv ? process.env[p.apiKeyEnv] : undefined
-      const res = await providerFetch(p.baseUrl)(`${p.baseUrl.replace(/\/+$/, '')}/models`, {
+      const keyName = p.key_env
+      const key = keyName ? process.env[keyName] : undefined
+      const res = await providerFetch(baseUrl)(`${baseUrl.replace(/\/+$/, '')}/models`, {
         headers: key ? { Authorization: `Bearer ${key}` } : {},
       })
       if (!res.ok) continue

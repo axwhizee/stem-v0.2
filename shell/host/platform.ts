@@ -130,7 +130,7 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
   await emptyRegistry.drain([], {})
   const completePrompt = async (prompt: string): Promise<string> => {
     const agent = createToolAgent(
-      { model: config.user.model, tools: [] },
+      { model: config.user?.model ?? 'opencode-go/deepseek-v4.1-flash', tools: [] },
       {
         gateway,
         registry: emptyRegistry,
@@ -151,6 +151,17 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
     gateway,
     timer,
     access,
+    userGenes: {
+      classRef: 'user',
+      description: config.user?.description,
+      sysPrompt: config.user?.systemPrompt ?? 'You are the user representative.',
+      model: config.user?.model,
+      ctxStrategy: config.user?.contextStrategy,
+      tools: config.user?.tools as never,
+      sendCountdown: config.user?.sendCountdown,
+      temperature: config.user?.temperature,
+      effort: config.user?.effort,
+    },
     tools: [
       ...(opts.hostTools ?? []),
       createReadTool(),
@@ -208,7 +219,8 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
       const i = s.indexOf('/')
       return { provider: s.slice(0, Math.max(0, i)), id: s.slice(i + 1) }
     },
-    modelOf: (id: AgentID) => system.lineage.get(id)?.attrs.model ?? config.user.model,
+    modelOf: (id: AgentID) =>
+      system.lineage.get(id)?.attrs.model ?? config.user?.model ?? 'opencode-go/deepseek-v4.1-flash',
     systemOf: (id: AgentID) => system.lineage.get(id)?.attrs.sysPrompt,
     maxStepsOf: (id: AgentID) => system.lineage.get(id)?.attrs.maxSteps ?? 0,
     setStatus: (id, status) => system.kernel.setStatus(id, status),

@@ -319,7 +319,7 @@ function toolLineEl(text, who, toolName) {
 function emptyHint() {
   const el = document.createElement('div')
   el.id = 'empty'
-  if (agentsCache.filter((a) => a.parentId !== null).length === 0) {
+  if (treeAgentsOf(agentsCache).length === 0) {
     el.innerHTML = '族谱仅根 <b>user#0</b>。<br/>于左下「<b>生</b>」实例化第一位后代，它将成为你的子节点、开启协作。'
   } else {
     el.innerHTML = '从左侧<b>族谱树</b>选择一位后代开始对话。'

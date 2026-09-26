@@ -34,17 +34,17 @@ export function buildGateway(config: StemConfig, env: NodeJS.ProcessEnv): BuiltG
   const map = new Map<string, ModelGateway>()
 
   for (const [name, p] of Object.entries(providers)) {
-    const key = p.apiKeyEnv ? env[p.apiKeyEnv] : undefined
-    if (p.apiKeyEnv && !key) {
-      warnings.push(`provider ${name}: key_env ${p.apiKeyEnv} 未命中，用到时才会硬错`)
+    const key = p.key_env ? env[p.key_env] : undefined
+    if (p.key_env && !key) {
+      warnings.push(`provider ${name}: key_env ${p.key_env} 未命中，用到时才会硬错`)
     }
     map.set(
       name,
       createOpenAiCompatibleGateway({
-        baseUrl: p.baseUrl,
+        baseUrl: p.base_url,
         apiKey: key,
         models: p.models && p.models.length ? p.models : undefined,
-        fetch: providerFetch(p.baseUrl),
+        fetch: providerFetch(p.base_url),
       }),
     )
   }
