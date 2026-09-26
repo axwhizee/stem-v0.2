@@ -221,18 +221,27 @@ export function createCortexStrategy(options: CortexOptions): ContextStrategy {
             e.message.content.map((p) => (p.type === 'text' ? p.text : `[${p.type}]`)).join(''),
           )
           .join('\n')
+        // 段1 → 暂存 STM；不合格不轮替
         const stmReport = await options.complete(
           `Summarize the working context into short-term notes (STM).\n${corpusText.slice(-4000)}`,
         )
-        s.stm = stmReport.split('\n').filter(Boolean).slice(0, 12)
+        const nextStm = stmReport.split('\n').filter(Boolean).slice(0, 12)
+        if (nextStm.length === 0) return undefined
 
         const notesText = readNotes(homeRoot, view.agentId).join('\n')
+        // 段2 → 暂存 LTM；不合格不轮替
         const ltmReport = await options.complete(
-          `Distill long-term memory (LTM) from prior LTM + STM + notes.\n[LTM]\n${s.ltm.join('\n')}\n[STM]\n${s.stm.join('\n')}\n[Notes]\n${notesText}`,
+          `Distill long-term memory (LTM) from prior LTM + STM + notes.\n[LTM]\n${s.ltm.join('\n')}\n[STM]\n${nextStm.join('\n')}\n[Notes]\n${notesText}`,
         )
-        s.ltm = ltmReport.split('\n').filter(Boolean).slice(0, 20)
+        const nextLtm = ltmReport.split('\n').filter(Boolean).slice(0, 20)
+        if (nextLtm.length === 0) return undefined
 
+        // 双段合格才 rotate
+        s.stm = nextStm
+        s.ltm = nextLtm
         return this.orchestrate(view, 'watermark')
+      } catch {
+        return undefined
       } finally {
         s.dreaming = false
       }

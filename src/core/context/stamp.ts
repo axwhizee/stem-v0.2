@@ -31,7 +31,7 @@ function stampValue(envelope: Envelope, key: 'timestamp' | 'delay' | 'tokens'): 
   return envelope.stamp?.[key] === true
 }
 
-/** classic 策略默认投影：valid 信 → Message，可选 stamp 前缀。 */
+/** classic 策略默认投影：valid 信 → Message；相邻 user 合并（合并窗口叠加）。 */
 export function projectMessages(
   envelopes: readonly Envelope[],
   config: StampConfig,
@@ -40,7 +40,16 @@ export function projectMessages(
   for (const env of envelopes) {
     if (!env.valid) continue
     const parts = projectStamp(env, config, env.message.content)
-    out.push({ ...env.message, content: parts })
+    const msg: Message = { ...env.message, content: parts }
+    const last = out[out.length - 1]
+    if (last && last.kind === 'user' && msg.kind === 'user') {
+      out[out.length - 1] = {
+        ...last,
+        content: [...last.content, { type: 'text', text: '\n' }, ...msg.content],
+      }
+      continue
+    }
+    out.push(msg)
   }
   return out
 }

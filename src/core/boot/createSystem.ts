@@ -95,6 +95,11 @@ export async function createSystem(host: HostPorts): Promise<StemSystem> {
   const kernel = new Kernel({
     lineage,
     deliverFirst: async (id, message) => {
+      const text = message.content
+        .map((p) => (p.type === 'text' ? p.text : ''))
+        .join('')
+        .trim()
+      if (!text) return // 空首信不入管道，避免合法序列被空 user 顶坏
       const env = {
         id: `first-${id}`,
         agentId: id,

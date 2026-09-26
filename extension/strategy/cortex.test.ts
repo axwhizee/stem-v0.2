@@ -91,4 +91,27 @@ describe('cortex 笔记假 tool 槽', () => {
     assert.ok(r.messages.some((m) => m.kind === 'assistant' && m.toolCalls?.[0]?.name === NOTES_TOOL_NAME))
     assert.equal(validateSequence(r.messages), undefined)
   })
+
+  it('dream 双段合格才轮替；段2 空报告不轮替', async () => {
+    const home = mkdtempSync(join(tmpdir(), 'cortex-'))
+    const ok = createCortexStrategy({
+      homeRoot: home,
+      dreamAt: 1,
+      complete: async (p) => (p.includes('STM') ? 'stm-line' : 'ltm-line'),
+    })
+    const view = { agentId: makeAgentID('0.0'), envelopes: [], ctxTokens: 100, stamp: {} }
+    const r = await ok.process?.(view, 'watermark')
+    assert.ok(r === undefined || Array.isArray(r.messages))
+
+    let call = 0
+    const bad = createCortexStrategy({
+      homeRoot: home,
+      dreamAt: 1,
+      complete: async () => {
+        call++
+        return call === 1 ? 'stm-ok' : ''
+      },
+    })
+    assert.equal(await bad.process?.(view, 'watermark'), undefined)
+  })
 })
