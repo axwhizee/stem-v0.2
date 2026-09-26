@@ -6,6 +6,7 @@ import { readFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { join, dirname } from 'node:path'
 import { bootStem, resolveProjectRoot, type BootResult } from '../host/index.ts'
+import { providerFetch } from '../host/gateway.ts'
 import { makeAgentID, parentIdOf, ROOT_AGENT_ID, textContent } from '../../src/core/model/index.ts'
 import type { PilotEvent } from '../../src/core/events/index.ts'
 import { parseModelRef } from '../../src/core/gateway/index.ts'
@@ -103,6 +104,35 @@ function contextOf(boot: BootResult, agentId: string, contextWindow = 1000000) {
   }
 }
 
+/** 模型菜单：配置白名单 + 各 provider /models 实时拉取；键为 `provider/model`。 */
+async function listModels(boot: BootResult): Promise<{ refs: string[]; openEnded: string[] }> {
+  void boot
+  const refs = new Set<string>()
+  const openEnded: string[] = []
+  const cfg = JSON.parse(
+    readFileSync(join(PROJECT_ROOT, '.stem', 'stem.jsonc'), 'utf8'),
+  ) as { providers?: Record<string, { baseUrl?: string; apiKeyEnv?: string; models?: string[] }> }
+  for (const [name, p] of Object.entries(cfg.providers ?? {})) {
+    for (const m of p.models ?? []) refs.add(`${name}/${m}`)
+    if (!p.models || p.models.length === 0) openEnded.push(name)
+    if (!p.baseUrl) continue
+    try {
+      const key = p.apiKeyEnv ? process.env[p.apiKeyEnv] : undefined
+      const res = await providerFetch(p.baseUrl)(`${p.baseUrl.replace(/\/+$/, '')}/models`, {
+        headers: key ? { Authorization: `Bearer ${key}` } : {},
+      })
+      if (!res.ok) continue
+      const data = (await res.json()) as { data?: { id?: string }[] }
+      for (const item of data.data ?? []) {
+        if (item.id) refs.add(`${name}/${item.id}`)
+      }
+    } catch {
+      // 拉取失败仍保留配置白名单
+    }
+  }
+  return { refs: [...refs].sort(), openEnded }
+}
+
 async function main(): Promise<void> {
   const boot = await bootStem({
     projectRoot: PROJECT_ROOT,
@@ -144,7 +174,7 @@ async function main(): Promise<void> {
           boot.system.kernel.classNames().map((name) => ({ name, ...boot.system.kernel.classOf(name)?.genes })),
         )
       }
-      if (req.method === 'GET' && path === '/api/models') return sendJson(res, { refs: [], openEnded: [] })
+      if (req.method === 'GET' && path === '/api/models') return sendJson(res, await listModels(boot))
       if (req.method === 'GET' && path.startsWith('/api/agents/') && path.endsWith('/context')) {
         const agentId = decodeURIComponent(path.slice('/api/agents/'.length, -'/context'.length))
         return sendJson(res, contextOf(boot, agentId))
@@ -153,7 +183,9 @@ async function main(): Promise<void> {
       if (req.method === 'POST') {
         const body = await readBody(req)
         if (path === '/api/send') {
-          await boot.pilot.send(String(body.text ?? ''))
+          const to = String(body.to ?? ROOT_AGENT_ID)
+          const text = String(body.text ?? '')
+          await boot.pilot.play(makeAgentID(to)).send(text)
           return sendJson(res, { ok: true })
         }
         if (path === '/api/instantiate') {

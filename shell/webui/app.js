@@ -498,9 +498,9 @@ function handleEvent(ev) {
   }
   if (ev.type === 'letter') {
     const content = (ev.letters && ev.letters[0] && typeof ev.letters[0].content === 'string') ? ev.letters[0].content : ''
-    if (ev.agentId === currentAgentId) {
-      // 收信只刷新历史（新 user 行上屏）；桶归轮生命周期管，此处不动。
-      void loadContext(currentAgentId).catch((e) => console.error('[ui] loadContext@letter', e))
+    void loadAgents()
+      if (ev.agentId === currentAgentId) {
+        void loadContext(currentAgentId).catch((e) => console.error('[ui] loadContext@letter', e))
       void loadAgents()
     }
     return
@@ -657,7 +657,6 @@ function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
   await loadModels()
   await loadTemplates()
   await loadAgents()
-  renderTimeline([])
-  applyActions(null)
+  await selectAgent(ROOT_ID)
   openStream()
 })()
