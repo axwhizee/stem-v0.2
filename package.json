@@ -9,7 +9,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test \"src/**/*.test.ts\" \"extension/**/*.test.ts\"",
+    "test": "node --import tsx --test \"src/**/*.test.ts\" \"extension/**/*.test.ts\" \"test/**/*.test.ts\"",
     "test:module": "node --import tsx --test",
     "shell": "node --import tsx shell/cli/main.ts",
     "web": "node --import tsx shell/webui/server.ts",

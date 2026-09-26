@@ -2,7 +2,7 @@
 // extension = 对 core 的能力扩展；shell = 面向用户的延伸。
 
 import { createSystem, restoreInstances, restoreEnvelopes, type StemSystem } from '../../src/core/boot/index.ts'
-import { createMailListTool, createMailSendTool, createAgentClassCreateTool, createAgentClassUpdateTool, createAgentClassListTool } from '../../src/core/tools/internal/index.ts'
+import { createMailListTool, createMailSendTool, createAgentClassCreateTool, createAgentClassUpdateTool, createAgentClassListTool, createAgentInstantiateTool, createAgentUpdateTool, createAgentInspectTool } from '../../src/core/tools/internal/index.ts'
 import { loadAgentClassDir, writeAgentClassFile } from '../../extension/agent/index.ts'
 import { createCortexStrategy } from '../../extension/strategy/index.ts'
 import { createReadTool } from '../../extension/tools/read.ts'
@@ -137,6 +137,9 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
       createAgentClassListTool({
         getKernel: () => kernelRef.current!,
       }),
+      createAgentInstantiateTool({ getKernel: () => kernelRef.current! }),
+      createAgentUpdateTool({ getKernel: () => kernelRef.current! }),
+      createAgentInspectTool({ getKernel: () => kernelRef.current! }),
     ],
     strategies: [
       createClassicStrategy({ complete: completePrompt }),
