@@ -8,13 +8,14 @@ import { createCortexStrategy } from '../../extension/strategy/index.ts'
 import { createReadTool } from '../../extension/tools/read.ts'
 import { createBashTool } from '../../extension/tools/bash.ts'
 import { createClassicStrategy, createNoneStrategy } from '../../src/core/context/index.ts'
+import { createToolAgent } from '../../src/core/toolagent/index.ts'
 import { join } from 'node:path'
 import { DefaultRuntime } from '../../src/core/runtime/index.ts'
 import { createPilot, type Pilot } from '../../src/core/pilot/index.ts'
 import type { PilotEvent } from '../../src/core/events/index.ts'
 import type { TimerPort, Delivery } from '../../src/core/post/index.ts'
 import type { ToolCapability, AccessResolver } from '../../src/core/tools/index.ts'
-import { allowAll } from '../../src/core/tools/index.ts'
+import { allowAll, ToolCapabilityRegistry } from '../../src/core/tools/index.ts'
 import type { AgentID, Message } from '../../src/core/model/index.ts'
 import { makeTextMessage } from '../../src/core/model/index.ts'
 import { buildGateway } from './gateway.ts'
@@ -91,6 +92,28 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
       ? undefined
       : (opts.shellRunner ?? createNodeShellRunner({ defaultCwd: opts.projectRoot }))
 
+  // 整理用 ToolAgent：compact / dream 经 complete，不 spawn 实例
+  const emptyRegistry = new ToolCapabilityRegistry()
+  await emptyRegistry.drain([], {})
+  const completePrompt = async (prompt: string): Promise<string> => {
+    const agent = createToolAgent(
+      { model: config.user.model, tools: [] },
+      {
+        gateway,
+        registry: emptyRegistry,
+        access,
+        parseModel: (s) => {
+          const i = s.indexOf('/')
+          return { provider: s.slice(0, Math.max(0, i)), id: s.slice(i + 1) }
+        },
+      },
+    )
+    const r = await agent.complete({
+      messages: [{ kind: 'user', content: [{ type: 'text', text: prompt }] }],
+    })
+    return r.text
+  }
+
   const system = await createSystem({
     gateway,
     timer,
@@ -105,9 +128,12 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
       createMailListTool({ post }),
     ],
     strategies: [
-      createClassicStrategy(),
+      createClassicStrategy({ complete: completePrompt }),
       createNoneStrategy(),
-      createCortexStrategy({ homeRoot: join(stemDir(opts.projectRoot), 'home') }),
+      createCortexStrategy({
+        homeRoot: join(stemDir(opts.projectRoot), 'home'),
+        complete: completePrompt,
+      }),
     ],
     stamp: config.context?.stamp ?? { source: true },
     logSink: {

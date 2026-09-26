@@ -13,7 +13,8 @@
     "test:module": "node --import tsx --test",
     "shell": "node --import tsx shell/cli/main.ts",
     "web": "node --import tsx shell/webui/server.ts",
-    "dashboard": "node --import tsx shell/dashboard/server.ts"
+    "dashboard": "node --import tsx shell/dashboard/server.ts",
+    "check-exports": "node --import tsx script/check-exports.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
