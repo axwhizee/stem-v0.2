@@ -1,4 +1,4 @@
-﻿# stem
+# stem
 
 > **S**elf-**T**raining **E**volutionary **M**atrix —— 自我训练·进化·矩阵。  
 > 以原子化 Agent 类 + 实例构成平等生态；族谱树承载拓扑与属性；用户以扮演 `user#0` 参与。
@@ -33,7 +33,7 @@ npm test && npm run typecheck
 ```
 
 真实模型：在 `.stem/stem.jsonc` 配置 `providers`，密钥只经 env。  
-Docker：镜像 + `/data` volume 承载 `.stem/`（容器即 bash 边界）。
+部署（源码 / Docker / 发布形态）→ `deploy/`。
 
 ## 文档指南
 

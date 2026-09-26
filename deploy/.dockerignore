@@ -1,0 +1,7 @@
+node_modules
+.git
+.stem
+dist
+reference
+*.md
+!deploy/**/*.md
