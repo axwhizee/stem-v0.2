@@ -1,6 +1,19 @@
-plan.md
-prompts.md
+# node
 node_modules/
+*.tsbuildinfo
+
+# space / runtime
 .stem/
+stem.db
+
+# plan is local-only
+plan.md
+
+# os
+.DS_Store
+Thumbs.db
+
+# dist
+dist/
+
 reference/
-*.log

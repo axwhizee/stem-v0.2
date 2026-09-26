@@ -1,0 +1,24 @@
+{
+  "name": "stem",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Self-Training Evolutionary Matrix — self-hosted agent runtime",
+  "engines": {
+    "node": ">=23.4"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "test:module": "node --import tsx --test"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1",
+    "yaml": "^2.9.0"
+  }
+}
