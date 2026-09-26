@@ -74,6 +74,10 @@ export class Kernel {
     return this.#classes.get(name)
   }
 
+  classNames(): readonly string[] {
+    return [...this.#classes.keys()]
+  }
+
   /**
    * 实例化：类解析 → 属性收敛 → 族谱登记 → 首信入管道。
    * 根与普通实例同路径；user#0 无特权。

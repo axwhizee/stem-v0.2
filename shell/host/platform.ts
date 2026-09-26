@@ -2,8 +2,8 @@
 // extension = 对 core 的能力扩展；shell = 面向用户的延伸。
 
 import { createSystem, restoreInstances, restoreEnvelopes, type StemSystem } from '../../src/core/boot/index.ts'
-import { createMailListTool, createMailSendTool } from '../../src/core/tools/internal/index.ts'
-import { loadAgentClassDir } from '../../extension/agent/index.ts'
+import { createMailListTool, createMailSendTool, createAgentClassCreateTool, createAgentClassUpdateTool, createAgentClassListTool } from '../../src/core/tools/internal/index.ts'
+import { loadAgentClassDir, writeAgentClassFile } from '../../extension/agent/index.ts'
 import { createCortexStrategy } from '../../extension/strategy/index.ts'
 import { createReadTool } from '../../extension/tools/read.ts'
 import { createBashTool } from '../../extension/tools/bash.ts'
@@ -76,9 +76,9 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
   const access = opts.access ?? allowAll()
 
   let runtime!: DefaultRuntime
-
-  // 类目录真相：extension/agent + .stem/agent
-  const classDirs = [join(opts.projectRoot, 'extension', 'agent'), join(stemDir(opts.projectRoot), 'agent')]
+  const kernelRef: { current?: import('../../src/core/kernel/index.ts').Kernel } = {}
+  const agentDir = join(stemDir(opts.projectRoot), 'agent')
+  const classDirs = [join(opts.projectRoot, 'extension', 'agent'), agentDir]
   const classIssues: string[] = []
   const extraClasses: { name: string; genes: import('../../src/core/model/index.ts').ClassGenes }[] = []
   for (const dir of classDirs) {
@@ -126,6 +126,17 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
     toolFactories: ({ post }) => [
       createMailSendTool({ post }),
       createMailListTool({ post }),
+      createAgentClassCreateTool({
+        getKernel: () => kernelRef.current!,
+        persist: (name, genes) => writeAgentClassFile(agentDir, name, genes),
+      }),
+      createAgentClassUpdateTool({
+        getKernel: () => kernelRef.current!,
+        persist: (name, genes) => writeAgentClassFile(agentDir, name, genes),
+      }),
+      createAgentClassListTool({
+        getKernel: () => kernelRef.current!,
+      }),
     ],
     strategies: [
       createClassicStrategy({ complete: completePrompt }),
@@ -147,6 +158,7 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
       void runtime.processDelivery(d)
     },
   })
+  kernelRef.current = system.kernel
 
   runtime = new DefaultRuntime({
     gateway,
