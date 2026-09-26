@@ -8,12 +8,12 @@ import type {
   Envelope,
   EffectiveAttrs,
   RuntimeAttrs,
-} from '../../core/model/index.ts'
+} from '../../src/core/model/index.ts'
 import type {
   InstanceRow,
   InstanceStore,
   MessageStore,
-} from '../../core/ports/index.ts'
+} from '../../src/core/ports/index.ts'
 
 export function createSqliteStores(dbFile: string): MessageStore & InstanceStore & { close: () => void } {
   mkdirSync(dirname(dbFile), { recursive: true })

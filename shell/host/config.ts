@@ -7,7 +7,7 @@ import {
   parseStemConfig,
   type StemConfig,
   type ConfigIssue,
-} from '../../core/config/index.ts'
+} from '../../src/core/config/index.ts'
 
 export function resolveProjectRoot(argv: readonly string[] = process.argv.slice(2)): string {
   const positional = argv.find((a) => !a.startsWith('-'))

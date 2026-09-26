@@ -2,7 +2,7 @@
 
 import type { ToolCapability, ToolContext } from '../../src/core/tools/index.ts'
 import { toolOk, toolError } from '../../src/core/tools/index.ts'
-import type { ShellRunner } from '../../src/shell/host/bash.ts'
+import type { ShellRunner } from '../../shell/host/bash.ts'
 
 export function createBashTool(runner: ShellRunner): ToolCapability {
   return {

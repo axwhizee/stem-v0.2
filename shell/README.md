@@ -13,8 +13,11 @@ shell/host     平台装配（各 shell 复用）
   store.ts     SQLite MessageStore/InstanceStore
   bash.ts      ShellRunner
 shell/cli      终端参考壳
-（后续）webui / dashboard / feishu
+shell/webui    浏览器单页（HTTP + SSE）
+（后续）dashboard / feishu
 ```
+
+依赖：`shell/*` → `src/core/*`。core 不依赖 shell。
 
 ## 交互面
 

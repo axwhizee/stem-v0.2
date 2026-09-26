@@ -1,15 +1,16 @@
 // shell 宿主装配 —— 任何 shell 复用；只换 UI 与事件消费。
 // extension = 对 core 的能力扩展；shell = 面向用户的延伸。
 
-import { createSystem, type StemSystem } from '../../core/boot/index.ts'
-import { DefaultRuntime } from '../../core/runtime/index.ts'
-import { createPilot, type Pilot } from '../../core/pilot/index.ts'
-import type { PilotEvent } from '../../core/events/index.ts'
-import type { TimerPort, Delivery } from '../../core/post/index.ts'
-import type { ToolCapability, AccessResolver } from '../../core/tools/index.ts'
-import { allowAll } from '../../core/tools/index.ts'
-import type { AgentID, Message } from '../../core/model/index.ts'
-import { makeTextMessage } from '../../core/model/index.ts'
+import { createSystem, restoreInstances, restoreEnvelopes, type StemSystem } from '../../src/core/boot/index.ts'
+import { createMailListTool, createMailSendTool } from '../../src/core/tools/internal/index.ts'
+import { DefaultRuntime } from '../../src/core/runtime/index.ts'
+import { createPilot, type Pilot } from '../../src/core/pilot/index.ts'
+import type { PilotEvent } from '../../src/core/events/index.ts'
+import type { TimerPort, Delivery } from '../../src/core/post/index.ts'
+import type { ToolCapability, AccessResolver } from '../../src/core/tools/index.ts'
+import { allowAll } from '../../src/core/tools/index.ts'
+import type { AgentID, Message } from '../../src/core/model/index.ts'
+import { makeTextMessage } from '../../src/core/model/index.ts'
 import { buildGateway } from './gateway.ts'
 import { createNodeShellRunner, type ShellRunner } from './bash.ts'
 import {
@@ -75,7 +76,11 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
     gateway,
     timer,
     access,
-    tools: opts.hostTools ?? [],
+    tools: [...(opts.hostTools ?? [])],
+    toolFactories: ({ post }) => [
+      createMailSendTool({ post }),
+      createMailListTool({ post }),
+    ],
     stamp: config.context?.stamp ?? { source: true },
     logSink: {
       write: (e) => {
@@ -118,6 +123,23 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
   })
 
   if (opts.onEvent) system.events.on(opts.onEvent)
+
+  // 恢复：实例拓扑序重放 + 语料载箱
+  if (stores) {
+    const restored = restoreInstances(stores, system.lineage)
+    for (const i of restored.issues) console.warn(`[stem] restore: ${i}`)
+    const ids = stores.loadAll().map((r) => r.id)
+    const envs = restoreEnvelopes(stores, system.post, ids)
+    if (envs > 0 || restored.instances > 0) {
+      console.log(`[stem] restored ${restored.instances} instances, ${envs} envelopes`)
+    }
+    // write-through
+    const baseDeposit = system.post.deposit.bind(system.post)
+    system.post.deposit = (envelope) => {
+      stores.append(envelope)
+      baseDeposit(envelope)
+    }
+  }
 
   const pilot = createPilot({
     send: async (as, text) => {

@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "test:module": "node --import tsx --test",
-    "shell": "node --import tsx src/shell/cli/main.ts"
+    "shell": "node --import tsx shell/cli/main.ts",
+    "web": "node --import tsx shell/webui/server.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

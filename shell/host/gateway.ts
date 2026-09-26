@@ -6,8 +6,8 @@ import {
   type ModelGateway,
   type LLMRequest,
   type LLMEvent,
-} from '../../core/gateway/index.ts'
-import type { StemConfig } from '../../core/config/index.ts'
+} from '../../src/core/gateway/index.ts'
+import type { StemConfig } from '../../src/core/config/index.ts'
 
 export type BuiltGateway = {
   readonly gateway: ModelGateway

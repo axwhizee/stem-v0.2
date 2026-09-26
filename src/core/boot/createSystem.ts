@@ -25,6 +25,8 @@ export type HostPorts = {
   readonly logSink?: LogSink
   readonly stamp?: StampConfig
   readonly tools?: readonly ToolCapability[]
+  /** 需要 post 等就绪面的工具工厂 */
+  readonly toolFactories?: (ctx: { post: PostOffice }) => readonly ToolCapability[]
   readonly strategies?: readonly ContextStrategy[]
   readonly access: AccessResolver
   /** 快递员送信钩子；缺省只发 letter 事件 */
@@ -71,6 +73,7 @@ export async function createSystem(host: HostPorts): Promise<StemSystem> {
 
   // 策略 ownedTools 并入 seed
   const seed = [...(host.tools ?? [])]
+  if (host.toolFactories) seed.push(...host.toolFactories({ post }))
   for (const s of strategies) {
     if (s.ownedTools) seed.push(...s.ownedTools)
   }
