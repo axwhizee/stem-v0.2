@@ -8,10 +8,24 @@ import {
   type LLMEvent,
 } from '../../src/core/gateway/index.ts'
 import type { StemConfig } from '../../src/core/config/index.ts'
+import { randomUUID } from 'node:crypto'
 
 export type BuiltGateway = {
   readonly gateway: ModelGateway
   readonly warnings: readonly string[]
+}
+
+/** 每进程一个会话 id（opencode.ai 要求；进程即会话，零持久化）。 */
+const OPENSESSION = randomUUID()
+
+export function providerFetch(baseUrl: string): typeof fetch {
+  const isOpencode = /(^|\.)opencode\.ai$/i.test(new URL(baseUrl).hostname)
+  return async (input, init) => {
+    const headers = new Headers(init?.headers)
+    headers.set('User-Agent', 'stem/0.1')
+    if (isOpencode) headers.set('x-opencode-session', OPENSESSION)
+    return fetch(input, { ...init, headers })
+  }
 }
 
 export function buildGateway(config: StemConfig, env: NodeJS.ProcessEnv): BuiltGateway {
@@ -29,7 +43,8 @@ export function buildGateway(config: StemConfig, env: NodeJS.ProcessEnv): BuiltG
       createOpenAiCompatibleGateway({
         baseUrl: p.baseUrl,
         apiKey: key,
-        models: p.models,
+        models: p.models && p.models.length ? p.models : undefined,
+        fetch: providerFetch(p.baseUrl),
       }),
     )
   }
