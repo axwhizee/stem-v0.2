@@ -29,9 +29,9 @@ export function isAncestorOf(ancestor: AgentID, node: AgentID): boolean {
   return node === ancestor || node.startsWith(`${ancestor}.`)
 }
 
-/** 可达域 ≡ 自身 ∨ 祖先（architecture 3.5）。 */
+/** 可达谓词 ≡ from 为 target 的自身或祖先（父管子；architecture 3.5）。 */
 export function canReach(from: AgentID, target: AgentID): boolean {
-  return target === from || isAncestorOf(target, from)
+  return isAncestorOf(from, target)
 }
 
 export function compareAgentID(a: AgentID, b: AgentID): number {

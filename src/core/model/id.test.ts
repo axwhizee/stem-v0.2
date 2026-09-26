@@ -33,12 +33,12 @@ describe('id', () => {
     assert.equal(childAgentID(makeAgentID('0.2'), 1), makeAgentID('0.2.1'))
   })
 
-  it('canReach ≡ 自身 ∨ 祖先', () => {
+  it('canReach ≡ from 为 target 自身或祖先', () => {
     const a = makeAgentID('0.1')
     const b = makeAgentID('0.1.2')
     assert.equal(canReach(a, a), true)
-    assert.equal(canReach(b, a), true)
-    assert.equal(canReach(a, b), false)
+    assert.equal(canReach(a, b), true)
+    assert.equal(canReach(b, a), false)
     assert.equal(isAncestorOf(a, b), true)
     assert.equal(isAncestorOf(b, a), false)
   })
