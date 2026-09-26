@@ -115,6 +115,22 @@ export class LineageTree {
     this.#nodes.set(id, { ...n, tombstone: true })
     return undefined
   }
+
+  /** 运行期属性写回（kernel 写面已预检）。 */
+  rewriteAttrs(id: AgentID, attrs: EffectiveAttrs): LineageIssue | undefined {
+    const n = this.#nodes.get(id)
+    if (!n) return { kind: 'lineage_missing_node', id }
+    this.#nodes.set(id, { ...n, attrs })
+    this.#access.set(id, materializeAccess({ attrs }))
+    return undefined
+  }
+
+  rewriteRuntime(id: AgentID, runtime: RuntimeAttrs): LineageIssue | undefined {
+    const n = this.#nodes.get(id)
+    if (!n) return { kind: 'lineage_missing_node', id }
+    this.#nodes.set(id, { ...n, runtime })
+    return undefined
+  }
 }
 
 /**
