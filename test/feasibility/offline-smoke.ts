@@ -58,7 +58,7 @@ runtime = new DefaultRuntime({
 })
 
 system.events.on((e) => {
-  if (e.type === 'stream') events.push(`stream:${e.text}`)
+  if (e.type === 'stream' && e.event.type === 'text-delta') events.push(`stream:${e.event.text}`)
   if (e.type === 'letter') events.push(`letter:${e.agentId}`)
 })
 
