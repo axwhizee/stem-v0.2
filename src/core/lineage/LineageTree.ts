@@ -81,6 +81,10 @@ export class LineageTree {
     return this.#nodes.has(id)
   }
 
+  allIds(): readonly AgentID[] {
+    return [...this.#nodes.keys()]
+  }
+
   children(parent: AgentID): readonly AgentID[] {
     return [...this.#nodes.keys()]
       .filter((id) => !this.#nodes.get(id)?.tombstone && parentIdOf(id) === parent)

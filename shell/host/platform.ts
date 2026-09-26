@@ -2,11 +2,20 @@
 // extension = 对 core 的能力扩展；shell = 面向用户的延伸。
 
 import { createSystem, restoreInstances, restoreEnvelopes, type StemSystem } from '../../src/core/boot/index.ts'
-import { createMailListTool, createMailSendTool, createAgentClassCreateTool, createAgentClassUpdateTool, createAgentClassListTool, createAgentInstantiateTool, createAgentUpdateTool, createAgentInspectTool } from '../../src/core/tools/internal/index.ts'
+import { createMailListTool, createMailSendTool, createMailParticipantsTool, createAgentClassCreateTool, createAgentClassUpdateTool, createAgentClassListTool, createAgentInstantiateTool, createAgentUpdateTool, createAgentInspectTool, createAgentListTool, createAgentAncestryTool, createAgentDescendantsTool, createAgentTerminateTool, createContextOverviewTool, createContextExportTool, createContextRemoveTool, createContextEditTool, createContextApplyTool, createTelemetryQueryTool } from '../../src/core/tools/internal/index.ts'
 import { loadAgentClassDir, writeAgentClassFile } from '../../extension/agent/index.ts'
 import { createCortexStrategy } from '../../extension/strategy/index.ts'
 import { createReadTool } from '../../extension/tools/read.ts'
 import { createBashTool } from '../../extension/tools/bash.ts'
+import {
+  createWriteTool,
+  createEditTool,
+  createGrepTool,
+  createGlobTool,
+  createSkillTool,
+  createWebfetchTool,
+  createWebsearchTool,
+} from '../../extension/tools/fs.ts'
 import { createClassicStrategy, createNoneStrategy } from '../../src/core/context/index.ts'
 import { createToolAgent } from '../../src/core/toolagent/index.ts'
 import { join } from 'node:path'
@@ -165,11 +174,19 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
     tools: [
       ...(opts.hostTools ?? []),
       createReadTool(),
+      createWriteTool(),
+      createEditTool(),
+      createGrepTool(),
+      createGlobTool(),
+      createSkillTool(),
+      createWebfetchTool(),
+      createWebsearchTool(),
       ...(shellRunner ? [createBashTool(shellRunner)] : []),
     ],
     toolFactories: ({ post }) => [
       createMailSendTool({ post }),
       createMailListTool({ post }),
+      createMailParticipantsTool({ post }),
       createAgentClassCreateTool({
         getKernel: () => kernelRef.current!,
         persist: (name, genes) => writeAgentClassFile(agentDir, name, genes),
@@ -184,6 +201,16 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
       createAgentInstantiateTool({ getKernel: () => kernelRef.current! }),
       createAgentUpdateTool({ getKernel: () => kernelRef.current! }),
       createAgentInspectTool({ getKernel: () => kernelRef.current! }),
+      createAgentListTool({ getKernel: () => kernelRef.current! }),
+      createAgentAncestryTool({ getKernel: () => kernelRef.current! }),
+      createAgentDescendantsTool({ getKernel: () => kernelRef.current! }),
+      createAgentTerminateTool({ getKernel: () => kernelRef.current! }),
+      createContextOverviewTool({ post }),
+      createContextExportTool({ post }),
+      createContextRemoveTool({ post }),
+      createContextEditTool({ post }),
+      createContextApplyTool({ post }),
+      createTelemetryQueryTool(),
     ],
     strategies: [
       createClassicStrategy({ complete: completePrompt }),

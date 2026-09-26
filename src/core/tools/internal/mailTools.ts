@@ -95,3 +95,22 @@ export function createMailListTool(ports: MailPorts): ToolCapability {
     },
   }
 }
+
+/** mail_participants：已通信的 from/to 摘要。 */
+export function createMailParticipantsTool(ports: MailPorts): ToolCapability {
+  return {
+    name: 'mail_participants',
+    description: 'List distinct correspondents seen in mailboxes',
+    kind: 'internal',
+    registerAccess: 'hidden',
+    parameters: { type: 'object', properties: {} },
+    execute: (_input: unknown, ctx) => {
+      const box = ports.post.boxOf(makeAgentID(ctx.agentId))
+      const set = new Set<string>()
+      for (const e of box) {
+        if (e.from !== undefined) set.add(String(e.from))
+      }
+      return toolOk(JSON.stringify([...set]))
+    },
+  }
+}

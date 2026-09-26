@@ -81,6 +81,29 @@ export class PostOffice {
     return true
   }
 
+  /** 同 kind 内容修订（context_edit）。 */
+  rewrite(agentId: AgentID, envelopeId: string, message: Message): boolean {
+    const box = this.#boxes.get(agentId)
+    if (!box) return false
+    const i = box.findIndex((e) => e.id === envelopeId)
+    if (i < 0) return false
+    const old = box[i]
+    if (!old) return false
+    box[i] = { ...old, message }
+    return true
+  }
+
+  invalidate(agentId: AgentID, envelopeId: string, tag?: string): boolean {
+    const box = this.#boxes.get(agentId)
+    if (!box) return false
+    const i = box.findIndex((e) => e.id === envelopeId)
+    if (i < 0) return false
+    const old = box[i]
+    if (!old) return false
+    box[i] = { ...old, valid: false, tag: tag ?? old.tag }
+    return true
+  }
+
   takePending(callId: string): PendingCall | undefined {
     const call = this.#pending.get(callId)
     this.#pending.delete(callId)

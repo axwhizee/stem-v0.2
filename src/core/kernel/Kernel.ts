@@ -78,6 +78,37 @@ export class Kernel {
     return [...this.#classes.keys()]
   }
 
+  listAgents(): { id: AgentID; name?: string; classRef: string; status: string }[] {
+    const out: { id: AgentID; name?: string; classRef: string; status: string }[] = []
+    for (const id of this.#ports.lineage.allIds()) {
+      const n = this.#ports.lineage.get(id)
+      if (!n || n.tombstone) continue
+      out.push({
+        id: n.id,
+        name: n.attrs.name,
+        classRef: n.attrs.classRef,
+        status: n.runtime.status,
+      })
+    }
+    return out
+  }
+
+  ancestry(id: AgentID): AgentID[] {
+    return [id, ...this.#ports.lineage.ancestors(id)]
+  }
+
+  descendants(id: AgentID): AgentID[] {
+    const out: AgentID[] = []
+    const walk = (parent: AgentID) => {
+      for (const c of this.#ports.lineage.children(parent)) {
+        out.push(c)
+        walk(c)
+      }
+    }
+    walk(id)
+    return out
+  }
+
   /**
    * 实例化：类解析 → 属性收敛 → 族谱登记 → 首信入管道。
    * 根与普通实例同路径；user#0 无特权。
@@ -158,7 +189,15 @@ export class Kernel {
     return undefined
   }
 
-  terminate(id: AgentID): KernelIssue | undefined {
+  terminate(id: AgentID, recursive = false): KernelIssue | undefined {
+    if (recursive) {
+      for (const d of this.descendants(id)) {
+        const err = this.#ports.lineage.tombstone(d)
+        if (err) return err
+        const node = this.#ports.lineage.get(d)
+        if (node?.attrs.name) this.#names.delete(node.attrs.name)
+      }
+    }
     const issue = this.#ports.lineage.tombstone(id)
     if (issue) return issue
     const node = this.#ports.lineage.get(id)

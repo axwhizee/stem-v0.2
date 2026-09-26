@@ -1,3 +1,5 @@
 export * from './mailTools.ts'
 export * from './agentClassTools.ts'
 export * from './agentInstanceTools.ts'
+export * from './contextTools.ts'
+export * from './telemetryTools.ts'

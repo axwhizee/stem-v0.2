@@ -29,6 +29,8 @@ export type HostPorts = {
   readonly toolFactories?: (ctx: { post: PostOffice }) => readonly ToolCapability[]
   readonly strategies?: readonly ContextStrategy[]
   readonly access: AccessResolver
+  /** 根（user#0）类基因；缺省内置 user */
+  readonly userGenes?: import('../model/index.ts').ClassGenes
   /** 快递员送信钩子；缺省只发 letter 事件 */
   readonly onDelivery?: (delivery: import('../post/index.ts').Delivery) => void
 }
@@ -139,10 +141,15 @@ export async function createSystem(host: HostPorts): Promise<StemSystem> {
       }),
   })
 
-  // 根实例 user#0
+  // 根实例 user#0（与任意实例同路径）
+  const userGenes = host.userGenes ?? {
+    classRef: 'user',
+    sysPrompt: 'You are the user representative.',
+    tools: {},
+  }
   const rootIssue = kernel.registerClass({
     name: 'user',
-    genes: { classRef: 'user', sysPrompt: 'You are the user representative.', tools: {} },
+    genes: userGenes,
   })
   if (rootIssue) initIssues.push(`user class: ${rootIssue.kind}`)
 

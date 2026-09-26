@@ -113,3 +113,89 @@ export function createAgentInspectTool(ports: InstanceToolPorts): ToolCapability
     },
   }
 }
+
+export function createAgentListTool(ports: InstanceToolPorts): ToolCapability {
+  return {
+    name: 'agent_list',
+    description: 'List known agent instances',
+    kind: 'internal',
+    registerAccess: 'hidden',
+    parameters: { type: 'object', properties: {} },
+    execute: () => toolOk(JSON.stringify(ports.getKernel().listAgents())),
+  }
+}
+
+export function createAgentAncestryTool(ports: InstanceToolPorts): ToolCapability {
+  return {
+    name: 'agent_ancestry',
+    description: 'Ancestor chain of an instance (self → root)',
+    kind: 'internal',
+    registerAccess: 'hidden',
+    parameters: {
+      type: 'object',
+      properties: { agentId: { type: 'string' } },
+      required: ['agentId'],
+    },
+    execute: (input: unknown) => {
+      let id
+      try {
+        id = makeAgentID(String((input as { agentId?: string })?.agentId))
+      } catch {
+        return toolError('invalid agentId', 'invalid_args')
+      }
+      return toolOk(JSON.stringify(ports.getKernel().ancestry(id)))
+    },
+  }
+}
+
+export function createAgentDescendantsTool(ports: InstanceToolPorts): ToolCapability {
+  return {
+    name: 'agent_descendants',
+    description: 'Descendant ids of an instance',
+    kind: 'internal',
+    registerAccess: 'hidden',
+    parameters: {
+      type: 'object',
+      properties: { agentId: { type: 'string' } },
+      required: ['agentId'],
+    },
+    execute: (input: unknown) => {
+      let id
+      try {
+        id = makeAgentID(String((input as { agentId?: string })?.agentId))
+      } catch {
+        return toolError('invalid agentId', 'invalid_args')
+      }
+      return toolOk(JSON.stringify(ports.getKernel().descendants(id)))
+    },
+  }
+}
+
+export function createAgentTerminateTool(ports: InstanceToolPorts): ToolCapability {
+  return {
+    name: 'agent_terminate',
+    description: 'Terminate an instance (tombstone; id reserved)',
+    kind: 'internal',
+    registerAccess: 'hidden',
+    parameters: {
+      type: 'object',
+      properties: {
+        agentId: { type: 'string' },
+        recursive: { type: 'boolean' },
+      },
+      required: ['agentId'],
+    },
+    execute: (input: unknown) => {
+      const args = (input ?? {}) as { agentId?: string; recursive?: boolean }
+      let id
+      try {
+        id = makeAgentID(String(args.agentId))
+      } catch {
+        return toolError('invalid agentId', 'invalid_args')
+      }
+      const err = ports.getKernel().terminate(id, args.recursive === true)
+      if (err) return toolError(err.kind, err.kind)
+      return toolOk(`terminated ${id}`)
+    },
+  }
+}
