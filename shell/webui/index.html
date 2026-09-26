@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>stem · WebUIShell</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<aside>
+  <h1>STEM <small>· 族谱</small><span class="ico" id="settingsBtn" data-state="ready" title="设置面板（实例/类配置）">設</span><span class="ico" id="sideToggle" data-state="ready" title="收起侧栏（再点展开）">隠</span></h1>
+  <div id="tree"></div>
+  <div id="createBox">
+    <h3>实例化后代（user#0 = 根）</h3>
+    <div class="qrow"><label>类</label><select id="createClass" title="出生类（工具/策略基因随类）"></select></div>
+    <div class="qrow"><label>模型</label><select id="createModel" title="出生显式模型（模型三环·环一）；缺省 = 类基因>父继承>家学"></select></div>
+    <div class="qrow"><label>称呼</label><input id="createName" placeholder="缺省派生 类名-N（全局唯一）" /></div>
+    <div class="qrow"><label>提词</label><input id="createPrompt" placeholder="首条 user prompt…" /></div>
+    <button id="createBtn">生 · 实例化</button>
+  </div>
+  <div id="quickBox" hidden>
+    <h3>快捷设置 · <span id="quickName">—</span></h3>
+    <div class="qrow"><label>模型</label><select id="modelSel" title="切换运行时模型（下一轮生效，不级联子女）"></select><span id="modelOrigin" class="origin"></span></div>
+    <div class="qrow"><label>思考程度</label><select id="effortSel" disabled title="模型侧推理预算控制（即将上线）"><option>即将上线</option></select></div>
+  </div>
+</aside>
+<main>
+  <div id="timeline"></div>
+  <div id="turnStats" hidden></div>
+  <div id="cBox">
+    <textarea id="input" placeholder="选择一位后代开始对话…" disabled></textarea>
+    <div id="cBar">
+      <button id="attachBtn" title="附件（即将上线）" data-state="off">附</button>
+      <div id="cMeta"></div>
+      <span id="cRight"><span id="agentSt"></span><span id="conn" title="事件流连接"></span></span>
+      <button id="sendBtn" disabled>送</button>
+    </div>
+  </div>
+  <div id="ctxBar" title="上下文窗口占用"><div id="ctxFill"></div></div>
+</main>
+<div id="hoverCard" hidden></div>
+<div id="popover" hidden></div>
+<div id="settingsMask" hidden>
+  <div id="settingsPanel">
+    <div id="stHead"><span>设置 · <span id="stAgent">—</span></span><span class="sp"></span><span class="ico" id="stClose" title="关闭">閉</span></div>
+    <div id="stTabs">
+      <button data-tab="instance" class="on">实例配置</button>
+      <button data-tab="class">类配置</button>
+    </div>
+    <div id="stInstance" class="stPane">
+      <div class="row"><label>模型</label><select id="stModel" title="运行时换模型（下一轮生效，不级联子女）"></select><span id="stModelOrigin" class="origin"></span></div>
+      <div class="row"><label>思考程度</label><select disabled title="模型侧推理预算控制（即将上线）"><option>即将上线</option></select></div>
+      <div class="row"><input id="renameInput" placeholder="新称呼（全局唯一）" /><button id="renameBtn">改名</button></div>
+      <div class="row"><button data-state="off" title="工具收敛清单编辑（后续强化）">工 · 工具收敛（待强化）</button></div>
+      <div class="hint">此页签写**实例行**参数（运行期）；出生设置见左栏实例化面板。</div>
+    </div>
+    <div id="stClass" class="stPane" hidden>
+      <div class="row"><label>类</label><select id="stClassSel"></select></div>
+      <div class="row"><input id="stClassDesc" placeholder="类描述（description）" /></div>
+      <textarea id="stClassPrompt" rows="8" placeholder="系统提示词（systemPrompt）…"></textarea>
+      <div class="row"><label>策略</label><select id="stClassStrategy"><option value="">继承</option><option value="classic">classic</option><option value="none">none</option><option value="cortex">cortex</option></select><span id="stClassTools" class="hint"></span></div>
+      <div class="row"><button id="classSaveBtn">存 · 更新类定义</button><span id="classHint" class="hint"></span></div>
+      <div class="hint">类更新走宿主进化面（同名合并落盘 .stem/agent/，**只影响后续实例**）；面板/user 类不可编辑。</div>
+    </div>
+  </div>
+</div>
+<div id="drawer" hidden>
+  <div id="drawerHead"><span id="drawerTitle">督</span><span class="sp"></span><span class="ico" id="drawerClose" title="关闭监督抽屉">閉</span></div>
+  <div id="drawerBody"></div>
+</div>
+<div id="permission">
+  <div class="title">审 · 工具访问确认</div>
+  <div class="body" id="permBody"></div>
+  <div class="row">
+    <button class="once" id="permOnce">单次批准</button>
+    <button class="always" id="permAlways">始终批准</button>
+    <button class="reject" id="permReject">拒绝</button>
+  </div>
+</div>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

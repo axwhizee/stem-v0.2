@@ -81,13 +81,18 @@ export class DefaultRuntime {
           const ev = raw as LLMEvent
           if (ev.type === 'text-delta') {
             textParts.push(ev.text)
-            this.#ports.events.emit({ type: 'stream', agentId: id, text: ev.text })
+            this.#ports.events.emit({ type: 'stream', agentId: id, event: ev })
           } else if (ev.type === 'tool-call') {
             calls.push({ id: ev.id, name: ev.name, arguments: ev.input })
+            this.#ports.events.emit({ type: 'stream', agentId: id, event: ev })
           } else if (ev.type === 'usage') {
             usage = { inputTokens: ev.inputTokens, outputTokens: ev.outputTokens }
+            this.#ports.events.emit({ type: 'stream', agentId: id, event: ev })
           } else if (ev.type === 'finish') {
             finishReason = ev.reason
+            this.#ports.events.emit({ type: 'stream', agentId: id, event: ev })
+          } else if (ev.type === 'reasoning-delta') {
+            this.#ports.events.emit({ type: 'stream', agentId: id, event: ev })
           }
         }
       } catch (error) {

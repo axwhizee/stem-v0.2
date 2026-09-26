@@ -55,7 +55,17 @@ export async function createSystem(host: HostPorts): Promise<StemSystem> {
   const lineage = new LineageTree()
   const post = new PostOffice(host.timer, {
     onDelivery: (d) => {
-      events.emit({ type: 'letter', agentId: d.agentId, envelopeId: d.reason, preview: d.reason })
+      events.emit({
+        type: 'letter',
+        agentId: d.agentId,
+        letters: d.envelopes.map((e) => ({
+          role: e.message.kind,
+          content: e.message.content
+            .map((p) => (p.type === 'text' ? p.text : `[${p.type}]`))
+            .join(''),
+        })),
+        at: Date.now(),
+      })
       host.onDelivery?.(d)
     },
     now: () => Date.now(),
@@ -67,7 +77,14 @@ export async function createSystem(host: HostPorts): Promise<StemSystem> {
 
   const tools = new ToolCapabilityRegistry({
     events: {
-      emit: (e) => events.emit({ type: 'tool', agentId: e.agentId, name: e.name, phase: e.phase }),
+      emit: (e) =>
+        events.emit({
+          type: 'tool',
+          agentId: e.agentId,
+          tool: e.name,
+          phase: e.phase,
+          at: Date.now(),
+        }),
     },
   })
 
@@ -112,7 +129,14 @@ export async function createSystem(host: HostPorts): Promise<StemSystem> {
       }
       await pipeline.enter(env, 'user_prompt')
     },
-    onStatus: (id, status) => events.emit({ type: 'status', agentId: id, status }),
+    onStatus: (id, status) =>
+      events.emit({
+        type: 'status',
+        agentId: id,
+        from: '',
+        to: status,
+        at: Date.now(),
+      }),
   })
 
   // 根实例 user#0

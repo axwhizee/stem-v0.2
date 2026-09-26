@@ -8,8 +8,8 @@ async function main(): Promise<void> {
   const boot = await bootStem({
     projectRoot,
     onEvent: (e) => {
-      if (e.type === 'stream') process.stdout.write(e.text)
-      if (e.type === 'stream' && e.done) process.stdout.write('\n')
+      if (e.type === 'stream' && e.event.type === 'text-delta') process.stdout.write(e.event.text)
+      if (e.type === 'stream' && e.event.type === 'finish') process.stdout.write('\n')
       if (e.type === 'error') console.error(`\n[error] ${e.message}`)
     },
   })

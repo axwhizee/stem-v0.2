@@ -19,6 +19,7 @@ import { allowAll, ToolCapabilityRegistry } from '../../src/core/tools/index.ts'
 import type { AgentID, Message } from '../../src/core/model/index.ts'
 import { makeTextMessage } from '../../src/core/model/index.ts'
 import { buildGateway } from './gateway.ts'
+import { FakeGateway, type LLMEvent, type ModelGateway } from '../../src/core/gateway/index.ts'
 import { createNodeShellRunner, type ShellRunner } from './bash.ts'
 import {
   defaultDbFile,
@@ -40,6 +41,8 @@ export type BootOptions = {
   readonly stateStore?: boolean
   readonly shellRunner?: ShellRunner | false
   readonly timer?: TimerPort
+  /** 演示用假网关：自动调用工具并回复 */
+  readonly fakeGateway?: boolean
 }
 
 export type BootResult = {
@@ -66,8 +69,38 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
   if ('kind' in loaded) throw new Error(`config: ${loaded.detail}`)
   const config = loaded
 
-  const { gateway, warnings } = buildGateway(config, process.env)
+  const { gateway: realGateway, warnings } = buildGateway(config, process.env)
   for (const w of warnings) console.warn(`[stem] ${w}`)
+
+  // 演示假网关：按需调用已注册工具，便于无密钥观察工具轮
+  let fakeRound = 0
+  const demoGateway: ModelGateway = {
+    async *chat() {
+      fakeRound++
+      const scripts: LLMEvent[][] = [
+        [
+          { type: 'tool-call', id: 'demo-list', name: 'agent_class_list', input: {} },
+          { type: 'finish', reason: 'tool_calls' },
+        ],
+        [
+          { type: 'tool-call', id: 'demo-bash', name: 'bash', input: { command: 'echo hello-from-bash' } },
+          { type: 'finish', reason: 'tool_calls' },
+        ],
+        [
+          {
+            type: 'text-delta',
+            text: '（演示网关）已调用 agent_class_list 与 bash。真实对话请配置 providers 并注入密钥，或去掉 STEM_FAKE_GATEWAY。',
+          },
+          { type: 'finish', reason: 'stop' },
+        ],
+      ]
+      const events = scripts[Math.min(fakeRound - 1, scripts.length - 1)] ?? scripts[2]!
+      for (const e of events) yield e
+    },
+  }
+  const useFake = opts.fakeGateway === true || process.env.STEM_FAKE_GATEWAY === '1'
+  const gateway: ModelGateway = useFake ? demoGateway : realGateway
+  if (useFake) console.warn('[stem] STEM_FAKE_GATEWAY 演示模式：工具轮可观察，非真实模型')
 
   const stores =
     opts.stateStore === false ? undefined : createSqliteStores(defaultDbFile(opts.projectRoot))
