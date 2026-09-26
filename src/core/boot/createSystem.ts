@@ -27,6 +27,8 @@ export type HostPorts = {
   readonly tools?: readonly ToolCapability[]
   readonly strategies?: readonly ContextStrategy[]
   readonly access: AccessResolver
+  /** 快递员送信钩子；缺省只发 letter 事件 */
+  readonly onDelivery?: (delivery: import('../post/index.ts').Delivery) => void
 }
 
 export type StemSystem = {
@@ -52,6 +54,7 @@ export async function createSystem(host: HostPorts): Promise<StemSystem> {
   const post = new PostOffice(host.timer, {
     onDelivery: (d) => {
       events.emit({ type: 'letter', agentId: d.agentId, envelopeId: d.reason, preview: d.reason })
+      host.onDelivery?.(d)
     },
     now: () => Date.now(),
   })
