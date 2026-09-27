@@ -86,8 +86,8 @@ describe('全工具启用检查', () => {
       name: 'w1-1',
     })
     assert.equal(inst.kind, 'tool_ok')
-    const childId = inst.kind === 'tool_ok' ? String((inst.data as { id?: string }).id) : '0.0'
-    assert.ok(childId.startsWith('0.'))
+    const childId = inst.kind === 'tool_ok' ? String((inst.data as { id?: string }).id) : '1'
+    assert.ok(/^\d+/.test(childId), childId)
 
     assert.ok((await call('agent_list', {})).kind === 'tool_ok')
     assert.ok((await call('agent_inspect', { agentId: childId })).kind === 'tool_ok')

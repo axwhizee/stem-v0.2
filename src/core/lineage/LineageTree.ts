@@ -56,8 +56,11 @@ export class LineageTree {
     })
     this.#access.set(id, materializeAccess(config))
     if (parent !== null) {
-      const ord = Number(id.slice(id.lastIndexOf('.') + 1))
-      const cur = this.#nextOrdinal.get(parent) ?? 0
+      // 根之子 id 为裸序号（1,2…）；深层为 parent.n
+      const ord = parent === ROOT_AGENT_ID
+        ? Number(id)
+        : Number(id.slice(id.lastIndexOf('.') + 1))
+      const cur = this.#nextOrdinal.get(parent) ?? 1
       if (ord >= cur) this.#nextOrdinal.set(parent, ord + 1)
     }
     return undefined
@@ -102,7 +105,7 @@ export class LineageTree {
   }
 
   nextChildID(parent: AgentID): AgentID {
-    return childAgentID(parent, this.#nextOrdinal.get(parent) ?? 0)
+    return childAgentID(parent, this.#nextOrdinal.get(parent) ?? 1)
   }
 
   profileOf(id: AgentID): AccessProfile | undefined {

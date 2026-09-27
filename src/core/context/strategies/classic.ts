@@ -1,12 +1,14 @@
-// classic —— 有效序直出；水位可触发 compact（可注入 complete 做摘要，缺省基线占位）。
+// classic —— core 内置最小策略：有效序直出；水位时 compact 改写语料。
+// 不做自定义记忆；完整策略实现属 extension/custom，core 不耦合。
 
 import type { ContextStrategy, CorpusView, OrchestrateResult, Trigger } from '../types.ts'
 import { projectMessages } from '../stamp.ts'
-import { validateSequence, type Message } from '../../model/index.ts'
+import { validateSequence, type Message, type Envelope } from '../../model/index.ts'
 
 export type ClassicOptions = {
+  /** 水位（token）；达到时 process 改写语料 */
   readonly compactAt?: number
-  /** ToolAgent.complete 等摘要端口 */
+  /** 摘要端口（宿主/ToolAgent 注入）；无则基线占位 */
   readonly complete?: (prompt: string) => Promise<string>
 }
 
@@ -16,59 +18,58 @@ export function createClassicStrategy(options?: ClassicOptions): ContextStrategy
 
   return {
     name: 'classic',
-    orchestrate(view: CorpusView, trigger: Trigger): OrchestrateResult {
+    orchestrate(view: CorpusView): OrchestrateResult {
       const messages = projectMessages(view.envelopes, view.stamp)
-      if (validateSequence(messages)) return { messages: [] }
-      void trigger
-      return { messages }
+      return { messages: validateSequence(messages) ? [] : messages }
     },
     async process(view: CorpusView): Promise<OrchestrateResult | undefined> {
       if (view.ctxTokens < compactAt) return undefined
       const messages = projectMessages(view.envelopes, view.stamp)
-      const compacted = complete
-        ? await compactWithComplete(messages, complete)
-        : compactBaseline(messages)
-      return { messages: compacted, ready: 'watermark' }
+      if (messages.length <= 8) return undefined
+      const summary: Message = complete
+        ? await complete(summarizePrompt(messages)).then(
+            (text) => ({
+              kind: 'user',
+              content: [{ type: 'text', text: `…[compact]\n${text}` }],
+            }),
+            () => placeholder(messages),
+          )
+        : placeholder(messages)
+      // compact = 改写语料：旧段作废 + 摘要占位（由上层写回）
+      return { messages: [summary], ready: 'watermark' }
     },
     note: 'You are participating in a stem multi-agent system.',
   }
 }
 
-async function compactWithComplete(
-  messages: readonly Message[],
-  complete: (prompt: string) => Promise<string>,
-): Promise<Message[]> {
-  if (messages.length <= 8) return [...messages]
-  const head = messages.slice(0, 3)
-  const tail = messages.slice(-3)
-  const midRaw = messages.slice(3, -3)
-  const text = midRaw
-    .map((m) => m.content.map((p) => (p.type === 'text' ? p.text : `[${p.type}]`)).join(''))
-    .join('\n')
-  try {
-    const summary = await complete(`Compress the following dialogue into bullet notes:\n${text}`)
-    return [
-      ...head,
-      { kind: 'user', content: [{ type: 'text', text: `…[compacted]\n${summary}` }] },
-      ...tail,
-    ]
-  } catch {
-    return compactBaseline(messages)
+function placeholder(messages: readonly Message[]): Message {
+  return {
+    kind: 'user',
+    content: [{ type: 'text', text: `…[compact ${messages.length} messages]…` }],
   }
 }
 
-/** 无 LLM 的基线压缩：过长时中间变占位，保后继合法。 */
-function compactBaseline(messages: readonly Message[]): Message[] {
-  if (messages.length <= 8) return [...messages]
-  const head = messages.slice(0, 3)
-  const tail = messages.slice(-3)
-  const mid: Message = {
-    kind: 'user',
-    content: [{ type: 'text', text: `…[earlier ${messages.length - 6} messages compacted]…` }],
-  }
-  const lastHead = head[head.length - 1]
-  if (lastHead && lastHead.kind === 'assistant') {
-    return [...head, mid, ...tail]
-  }
-  return [...head, ...tail]
+function summarizePrompt(messages: readonly Message[]): string {
+  const text = messages
+    .map((m) => m.content.map((p) => (p.type === 'text' ? p.text : '')).join(''))
+    .join('\n')
+  return `Compress the dialogue into bullet notes:\n${text.slice(-4000)}`
 }
+
+/** none —— 跳过策略编排（占位符）。 */
+export function createNoneStrategy(): ContextStrategy {
+  return {
+    name: 'none',
+    orchestrate: () => ({ messages: [] }),
+  }
+}
+
+export function createStrategyRegistry(strategies: readonly ContextStrategy[]) {
+  const map = new Map(strategies.map((s) => [s.name, s]))
+  return {
+    get: (name: string) => map.get(name),
+    names: () => [...map.keys()],
+  }
+}
+
+export type { Envelope }

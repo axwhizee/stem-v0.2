@@ -4,7 +4,6 @@
 import { createSystem, restoreInstances, restoreEnvelopes, type StemSystem } from '../../src/core/boot/index.ts'
 import { createMailListTool, createMailSendTool, createMailParticipantsTool, createAgentClassCreateTool, createAgentClassUpdateTool, createAgentClassListTool, createAgentInstantiateTool, createAgentUpdateTool, createAgentInspectTool, createAgentListTool, createAgentAncestryTool, createAgentDescendantsTool, createAgentTerminateTool, createContextOverviewTool, createContextExportTool, createContextRemoveTool, createContextEditTool, createContextApplyTool, createTelemetryQueryTool } from '../../src/core/tools/internal/index.ts'
 import { loadAgentClassDir, writeAgentClassFile } from '../../extension/agent/index.ts'
-import { createCortexStrategy } from '../../extension/strategy/index.ts'
 import { createReadTool } from '../../extension/tools/read.ts'
 import { createBashTool } from '../../extension/tools/bash.ts'
 import {
@@ -16,7 +15,6 @@ import {
   createWebfetchTool,
   createWebsearchTool,
 } from '../../extension/tools/fs.ts'
-import { createClassicStrategy, createNoneStrategy } from '../../src/core/context/index.ts'
 import { createToolAgent } from '../../src/core/toolagent/index.ts'
 import { join } from 'node:path'
 import { DefaultRuntime } from '../../src/core/runtime/index.ts'
@@ -60,6 +58,29 @@ export type BootResult = {
   readonly runtime: DefaultRuntime
   readonly projectRoot: string
   readonly close: () => Promise<void>
+}
+
+/** 装载 extension 策略（core 不耦合实现）；配置由策略自持 jsonc。 */
+async function loadExtensionStrategies(
+  projectRoot: string,
+  complete: (prompt: string) => Promise<string>,
+): Promise<import('../../src/core/context/index.ts').ContextStrategy[]> {
+  const out: import('../../src/core/context/index.ts').ContextStrategy[] = []
+  try {
+    const mod = await import('../../extension/strategy/index.ts')
+    if (typeof mod.createCortexStrategy === 'function') {
+      out.push(
+        mod.createCortexStrategy({
+          homeRoot: join(stemDir(projectRoot), 'home'),
+          complete,
+          configFile: join(stemDir(projectRoot), 'strategy', 'cortex.jsonc'),
+        }),
+      )
+    }
+  } catch {
+    // extension 策略缺省不装载
+  }
+  return out
 }
 
 function defaultTimer(): TimerPort {
@@ -212,14 +233,11 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
       createContextApplyTool({ post }),
       createTelemetryQueryTool(),
     ],
-    strategies: [
-      createClassicStrategy({ complete: completePrompt }),
-      createNoneStrategy(),
-      createCortexStrategy({
-        homeRoot: join(stemDir(opts.projectRoot), 'home'),
-        complete: completePrompt,
-      }),
-    ],
+    classicOptions: {
+      complete: completePrompt,
+      compactAt: config.context?.compact?.at ?? config.context?.watermark,
+    },
+    strategies: await loadExtensionStrategies(opts.projectRoot, completePrompt),
     stamp: config.context?.stamp ?? { source: true },
     logSink: {
       write: (e) => {
@@ -254,12 +272,32 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
     onTurnEnd: (id, usage) => {
       const node = system.lineage.get(id)
       if (!node) return
+      const input = usage?.inputTokens ?? 0
+      const output = usage?.outputTokens ?? 0
+      // 信箱粗估优先（随对话增长）；有 usage 时取较大者
+      const est = system.post
+        .boxOf(id)
+        .filter((e) => e.valid)
+        .reduce(
+          (s, e) =>
+            s +
+            e.message.content.reduce(
+              (n, p) => n + (p.type === 'text' ? p.text.length : 0),
+              0,
+            ),
+          0,
+        )
+      const estTokens = Math.ceil(est / 4)
+      const ctx = Math.max(input, estTokens)
       system.lineage.rewriteRuntime(id, {
         ...node.runtime,
-        totalTokens:
-          node.runtime.totalTokens + (usage?.inputTokens ?? 0) + (usage?.outputTokens ?? 0),
+        ctxTokens: ctx,
+        totalTokens: node.runtime.totalTokens + (input || estTokens) + output,
         turnCount: node.runtime.turnCount + 1,
+        lastActive: Date.now(),
       })
+      // 水位触发整理（compact/dream）
+      void system.pipeline.tick(id, 'watermark')
     },
   })
 
@@ -280,11 +318,33 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
     if (envs > 0 || restored.instances > 0) {
       console.log(`[stem] restored ${restored.instances} instances, ${envs} envelopes`)
     }
-    // write-through
+    // write-through：语料 + 实例
     const baseDeposit = system.post.deposit.bind(system.post)
     system.post.deposit = (envelope) => {
       stores.append(envelope)
       baseDeposit(envelope)
+    }
+    const persistInstance = (id: AgentID) => {
+      const n = system.lineage.get(id)
+      if (!n) return
+      stores.upsert({
+        id: n.id,
+        attrs: n.attrs,
+        runtime: n.runtime,
+        tombstone: n.tombstone,
+      })
+    }
+    const baseRewriteRuntime = system.lineage.rewriteRuntime.bind(system.lineage)
+    system.lineage.rewriteRuntime = (id, runtime) => {
+      const r = baseRewriteRuntime(id, runtime)
+      persistInstance(id)
+      return r
+    }
+    const baseAttach = system.lineage.attach.bind(system.lineage)
+    system.lineage.attach = (id, config) => {
+      const r = baseAttach(id, config)
+      persistInstance(id)
+      return r
     }
   }
 

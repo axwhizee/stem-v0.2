@@ -76,11 +76,11 @@ describe('DefaultRuntime', () => {
       maxStepsOf: () => 4,
     })
     await rt.processDelivery({
-      agentId: makeAgentID('0.0'),
+      agentId: makeAgentID('1'),
       reason: 'user_prompt',
       envelopes: [],
     })
-    const box = post.boxOf(makeAgentID('0.0'))
+    const box = post.boxOf(makeAgentID('1'))
     assert.ok(box.some((e) => e.message.kind === 'assistant'))
     assert.ok(box.some((e) => e.message.kind === 'tool'))
   })

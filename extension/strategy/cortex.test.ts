@@ -99,7 +99,7 @@ describe('cortex 笔记假 tool 槽', () => {
       dreamAt: 1,
       complete: async (p) => (p.includes('STM') ? 'stm-line' : 'ltm-line'),
     })
-    const view = { agentId: makeAgentID('0.0'), envelopes: [], ctxTokens: 100, stamp: {} }
+    const view = { agentId: makeAgentID('1'), envelopes: [], ctxTokens: 100, stamp: {} }
     const r = await ok.process?.(view, 'watermark')
     assert.ok(r === undefined || Array.isArray(r.messages))
 

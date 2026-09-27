@@ -27,6 +27,8 @@ export type UserClassConfig = {
 
 export type ContextConfig = {
   readonly window?: number
+  /** 上下文水位（token）：classic compact / cortex dream 触发线 */
+  readonly watermark?: number
   readonly stamp?: {
     readonly source?: boolean
     readonly timestamp?: boolean
@@ -37,6 +39,8 @@ export type ContextConfig = {
     readonly enabled?: boolean
     readonly threshold?: number
     readonly keepRecentTurns?: number
+    /** 绝对 token 水位（优先于 threshold 比例） */
+    readonly at?: number
   }
 }
 

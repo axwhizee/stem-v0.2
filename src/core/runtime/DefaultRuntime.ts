@@ -149,6 +149,8 @@ export class DefaultRuntime {
         return
       }
     }
+    // 步数耗尽或正常收束都要记账
+    this.#ports.onTurnEnd?.(id, undefined)
     this.#ports.setStatus?.(id, 'holding')
   }
 

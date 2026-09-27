@@ -10,7 +10,7 @@ describe('LineageTree', () => {
     const tree = new LineageTree()
     assert.equal(tree.attach(ROOT_AGENT_ID, { attrs: rootEffective(genes, 'root') }), undefined)
     const child = tree.nextChildID(ROOT_AGENT_ID)
-    assert.equal(child, makeAgentID('0.0'))
+    assert.equal(child, makeAgentID('1'))
     assert.equal(
       tree.attach(child, {
         attrs: rootEffective({ classRef: 'worker', tools: {} }, 'w'),
@@ -43,12 +43,12 @@ describe('LineageTree', () => {
     tree.attach(child, { attrs: rootEffective(genes) })
     assert.equal(tree.tombstone(child), undefined)
     assert.deepEqual(tree.children(ROOT_AGENT_ID), [])
-    assert.equal(tree.nextChildID(ROOT_AGENT_ID), makeAgentID('0.1'))
+    assert.equal(tree.nextChildID(ROOT_AGENT_ID), makeAgentID('2'))
   })
 
   it('缺父拒绝登记', () => {
     const tree = new LineageTree()
-    assert.deepEqual(tree.attach(makeAgentID('0.1'), { attrs: rootEffective(genes) }), {
+    assert.deepEqual(tree.attach(makeAgentID('2'), { attrs: rootEffective(genes) }), {
       kind: 'lineage_missing_node',
       id: ROOT_AGENT_ID,
     })

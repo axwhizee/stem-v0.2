@@ -1,5 +1,6 @@
 // id —— 出生路径 AgentID。根 `0` 是拓扑原点，不是特权码。
-// 一律「子 = `<父>.<序号>`」；父 id 纯推导（parentIdOf），不冗余存储。
+// 根之子 = `1` `2`…（user#0 实例化顺序）；更深层 = `<父>.<序号>`。
+// 父 id 纯推导（parentIdOf），不冗余存储；销毁后 id 仍保留。
 
 export type AgentID = string & { readonly __brand: 'AgentID' }
 
@@ -11,27 +12,29 @@ export function makeAgentID(value: string): AgentID {
 }
 
 export function isAgentID(value: string): boolean {
-  return /^0(\.(0|[1-9]\d*))*$/.test(value)
+  return /^(0|[1-9]\d*(\.[1-9]\d*)*)$/.test(value)
 }
 
 export function parentIdOf(id: AgentID): AgentID | null {
   if (id === ROOT_AGENT_ID) return null
-  return makeAgentID(id.slice(0, id.lastIndexOf('.')))
+  const cut = id.lastIndexOf('.')
+  return makeAgentID(cut === -1 ? '0' : id.slice(0, cut))
 }
 
-/** 子出生路径 = `<父>.<序号>`。序号不回收。 */
+/** 子出生路径：根之子 = 序号本身（自 1 起）；更深层 = `<父>.<序号>`。 */
 export function childAgentID(parent: AgentID, ordinal: number): AgentID {
-  if (!Number.isInteger(ordinal) || ordinal < 0) throw new Error(`invalid ordinal: ${ordinal}`)
-  return makeAgentID(`${parent}.${ordinal}`)
+  if (!Number.isInteger(ordinal) || ordinal < 1) throw new Error(`invalid ordinal: ${ordinal}`)
+  return makeAgentID(parent === ROOT_AGENT_ID ? String(ordinal) : `${parent}.${ordinal}`)
 }
 
 export function isAncestorOf(ancestor: AgentID, node: AgentID): boolean {
-  return node === ancestor || node.startsWith(`${ancestor}.`)
+  return node === ancestor || node.startsWith(`${ancestor}.`) ||
+    (ancestor === ROOT_AGENT_ID && /^\d+$/.test(node))
 }
 
-/** 可达谓词 ≡ from 为 target 的自身或祖先（父管子；architecture 3.5）。 */
+/** 可达谓词 ≡ from 为 target 的自身或祖先。 */
 export function canReach(from: AgentID, target: AgentID): boolean {
-  return isAncestorOf(from, target)
+  return from === target || isAncestorOf(from, target)
 }
 
 export function compareAgentID(a: AgentID, b: AgentID): number {

@@ -97,7 +97,7 @@ describe('全量工具与策略功能', () => {
     const list = createMailListTool({ post })
     const r1 = ok(
       await send.execute(
-        { to: '0.0', text: 'hello-child' },
+        { to: '1', text: 'hello-child' },
         { agentId: '0', callId: 'm1' },
       ),
     )
@@ -151,8 +151,8 @@ describe('全量工具与策略功能', () => {
       ),
     )
     assert.ok(r1.kind === 'tool_ok', JSON.stringify(r1))
-    const childId = r1.kind === 'tool_ok' ? String((r1.data as { id?: string }).id) : '0.0'
-    assert.ok(childId.startsWith('0.'))
+    const childId = r1.kind === 'tool_ok' ? String((r1.data as { id?: string }).id) : '1'
+    assert.ok(/^\d+/.test(childId), childId)
 
     const r2 = ok(await upd.execute({ agentId: childId, temperature: 0.3 }, { agentId: '0' }))
     assert.equal(r2.kind, 'tool_ok')

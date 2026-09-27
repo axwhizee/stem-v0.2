@@ -27,10 +27,13 @@ export type HostPorts = {
   readonly tools?: readonly ToolCapability[]
   /** 需要 post 等就绪面的工具工厂 */
   readonly toolFactories?: (ctx: { post: PostOffice }) => readonly ToolCapability[]
-  readonly strategies?: readonly ContextStrategy[]
   readonly access: AccessResolver
   /** 根（user#0）类基因；缺省内置 user */
   readonly userGenes?: import('../model/index.ts').ClassGenes
+  /** core classic 可调参数（水位等）；策略实现仍在 classic 模块 */
+  readonly classicOptions?: import('../context/strategies/classic.ts').ClassicOptions
+  /** 额外策略（extension/custom）；core 只自带 classic/none */
+  readonly strategies?: readonly ContextStrategy[]
   /** 快递员送信钩子；缺省只发 letter 事件 */
   readonly onDelivery?: (delivery: import('../post/index.ts').Delivery) => void
 }
@@ -73,7 +76,12 @@ export async function createSystem(host: HostPorts): Promise<StemSystem> {
     now: () => Date.now(),
   })
 
-  const strategies = host.strategies ?? [createClassicStrategy(), createNoneStrategy()]
+  // core 内置 classic/none；extension/custom 策略由宿主追加
+  const strategies = [
+    createClassicStrategy(host.classicOptions),
+    createNoneStrategy(),
+    ...(host.strategies ?? []),
+  ]
   const strategyRegistry = createStrategyRegistry(strategies)
   const stamp: StampConfig = host.stamp ?? { source: true }
 
@@ -109,6 +117,19 @@ export async function createSystem(host: HostPorts): Promise<StemSystem> {
     post,
     strategyOf,
     stamp,
+    ctxTokensOf: (id) => lineage.get(id)?.runtime.ctxTokens ?? 0,
+    runProcess: async (id, strategy, trigger) => {
+      const view = {
+        agentId: id,
+        envelopes: post.boxOf(id),
+        ctxTokens: lineage.get(id)?.runtime.ctxTokens ?? 0,
+        stamp,
+      }
+      const result = await strategy.process?.(view, trigger)
+      if (result?.ready) {
+        post.notifyReady(id, result.ready, [])
+      }
+    },
   })
 
   const kernel = new Kernel({

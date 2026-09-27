@@ -23,15 +23,15 @@ describe('restore', () => {
       runtime: { status: 'thinking', turnCount: 2, ctxTokens: 1, totalTokens: 9 },
     })
     store.upsert({
-      id: makeAgentID('0.0'),
-      attrs: { ...(attrs as EffectiveAttrs), id: makeAgentID('0.0') },
+      id: makeAgentID('1'),
+      attrs: { ...(attrs as EffectiveAttrs), id: makeAgentID('1') },
       runtime: { status: 'idle', turnCount: 1, ctxTokens: 0, totalTokens: 1 },
     })
     const lineage = new LineageTree()
     const r = restoreInstances(store, lineage)
     assert.equal(r.instances, 2)
     assert.equal(lineage.get(ROOT_AGENT_ID)?.runtime.status, 'interrupted')
-    assert.equal(lineage.get(makeAgentID('0.0'))?.runtime.status, 'idle')
+    assert.equal(lineage.get(makeAgentID('1'))?.runtime.status, 'idle')
   })
 
   it('语料载箱', () => {

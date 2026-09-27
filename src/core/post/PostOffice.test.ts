@@ -61,8 +61,8 @@ describe('PostOffice', () => {
 
   it('广播点对点入库', () => {
     const post = new PostOffice(manualTimer(), { onDelivery: () => {} })
-    const a = makeAgentID('0.0')
-    const b = makeAgentID('0.1')
+    const a = makeAgentID('1')
+    const b = makeAgentID('2')
     post.broadcast(ROOT_AGENT_ID, [a, b], makeTextMessage('user', 'hi'), 'm')
     assert.equal(post.boxOf(a).length, 1)
     assert.equal(post.boxOf(b).length, 1)

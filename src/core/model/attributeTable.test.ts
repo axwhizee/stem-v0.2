@@ -13,7 +13,7 @@ import { makeAgentID } from './id.ts'
 describe('AttributeTable 收敛', () => {
   it('解析序：实例显式 > 类 > 父', () => {
     const parent = rootEffective({ classRef: 'base', model: 'p-model', temperature: 0.2 }, 'dad')
-    const childId = makeAgentID('0.0')
+    const childId = makeAgentID('1')
     const inherited = inherit(parent, childId)
     assert.equal(inherited.model, 'p-model')
     assert.equal(inherited.name, undefined)

@@ -17,6 +17,8 @@ export type PipelineHooks = {
   readonly strategyOf: (agentId: AgentID) => ContextStrategy
   readonly stamp: StampConfig
   readonly now?: () => number
+  /** 上下文占用（反馈账）；缺省 0 */
+  readonly ctxTokensOf?: (agentId: AgentID) => number
   /** 调用策略 process（compact/dream）；返回新投影 */
   readonly runProcess?: (
     agentId: AgentID,
@@ -36,12 +38,10 @@ export class ContextPipeline {
   }
 
   /**
-   * 进入管道：
-   * 代数校验 → from 确定 → 打戳 → 入库 → 策略编排 → notifyReady。
+   * 进入管道：代数校验 → 打戳 → 入库 → 策略编排（none 跳过）→ notifyReady。
    */
   async enter(envelope: Envelope, trigger: Trigger): Promise<EnterIssue | undefined> {
     const check = validateSuccessor(null, envelope.message)
-    // 单条形状；整段由策略投影后再验
     if (check && check.kind === 'message_invalid_shape' && check.detail.includes('toolCallId')) {
       return { kind: 'envelope_invalid_message', detail: check.detail }
     }
@@ -51,30 +51,37 @@ export class ContextPipeline {
     this.#hooks.post.deposit(stamped)
 
     const strategy = this.#hooks.strategyOf(stamped.agentId)
-    if (strategy.process) {
+    if (strategy.name !== 'none' && strategy.process) {
       await this.#hooks.runProcess?.(stamped.agentId, strategy, trigger)
     }
 
-    this.#hooks.post.notifyReady(
-      stamped.agentId,
-      trigger as DeliveryReason,
-      [stamped],
-    )
+    this.#hooks.post.notifyReady(stamped.agentId, trigger as DeliveryReason, [stamped])
     return undefined
   }
 
-  /** 投影当前语料（供 Runtime 取快照）。 */
+  /** 投影当前语料；none 跳过策略编排，直接基线投影。 */
   snapshot(agentId: AgentID): readonly Message[] {
     const strategy = this.#hooks.strategyOf(agentId)
+    const envelopes = this.#hooks.post.boxOf(agentId)
     const view = {
       agentId,
-      envelopes: this.#hooks.post.boxOf(agentId),
-      ctxTokens: 0,
+      envelopes,
+      ctxTokens: this.#hooks.ctxTokensOf?.(agentId) ?? 0,
       stamp: this.#hooks.stamp,
     }
-    const result = strategy.orchestrate(view, 'manual')
-    const err = validateSequence(result.messages)
-    return err ? [] : result.messages
+    const messages =
+      strategy.name === 'none'
+        ? projectMessages(envelopes, this.#hooks.stamp)
+        : strategy.orchestrate(view, 'manual').messages
+    return validateSequence(messages) ? [] : messages
+  }
+
+  /** 水位/手动触发策略整理（compact/dream），不投递新信。 */
+  async tick(agentId: AgentID, trigger: Trigger = 'watermark'): Promise<void> {
+    const strategy = this.#hooks.strategyOf(agentId)
+    if (strategy.process) {
+      await this.#hooks.runProcess?.(agentId, strategy, trigger)
+    }
   }
 
   /** 作废后重投影。 */

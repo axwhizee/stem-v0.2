@@ -32,6 +32,19 @@ export type CortexOptions = {
   readonly complete?: (prompt: string) => Promise<string>
   readonly dreamAt?: number
   readonly note?: string
+  /** 策略自持配置（jsonc 路径）；缺省 homeRoot 同级 cortex.jsonc */
+  readonly configFile?: string
+}
+
+/** 策略自维护配置，不进 stem.jsonc。 */
+export function loadCortexConfig(file: string): { dreamAt?: number; note?: string } {
+  try {
+    const text = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+    const o = JSON.parse(text) as { dreamAt?: number; note?: string }
+    return { dreamAt: o.dreamAt, note: o.note }
+  } catch {
+    return {}
+  }
 }
 
 function homeOf(homeRoot: string, agentId: string): string {
@@ -126,7 +139,8 @@ export function spliceNoteSlot(
 export function createCortexStrategy(options: CortexOptions): ContextStrategy {
   const state = new Map<string, CortexState>()
   const homeRoot = options.homeRoot
-  const dreamAt = options.dreamAt ?? 8000
+  const fileCfg = options.configFile ? loadCortexConfig(options.configFile) : {}
+  const dreamAt = options.dreamAt ?? fileCfg.dreamAt ?? 8000
 
   const stateOf = (id: string): CortexState => {
     let s = state.get(id)
