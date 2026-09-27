@@ -8,7 +8,7 @@ import {
   type Envelope,
   type Message,
 } from '../model/index.ts'
-import type { PostOffice, DeliveryReason } from '../post/index.ts'
+import type { PostOffice, DeliveryReason } from './PostOffice.ts'
 import type { ContextStrategy, StampConfig, Trigger } from './types.ts'
 import { collectStamp, projectMessages } from './stamp.ts'
 

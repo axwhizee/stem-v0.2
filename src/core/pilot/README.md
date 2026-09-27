@@ -1,6 +1,6 @@
 # pilot —— 扮演接口
 
-> 落实 `docs/architecture.md` 3.1.5 / 3.11。  
+> 落实 `docs/architecture.md` 3.1.5 / 3.1.6。  
 > 人类通过 shell **以某个实例的身份行动**，默认 `user#0`。pilot 不是特权通道，只是「穿上谁的鞋」：使用被扮演实例的属性、权限、语料。
 
 ---

@@ -1,6 +1,6 @@
 # boot —— 组合根
 
-> 落实 `docs/architecture.md` 3.8（系统 init）。  
+> 落实 `docs/architecture.md` 3.6.2（系统 boot 流程）。  
 > **唯一** `new` 服务并接线的地方。boot 只持有装配过程，不持业务状态。
 
 ---

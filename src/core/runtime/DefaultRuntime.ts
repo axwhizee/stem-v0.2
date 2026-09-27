@@ -58,7 +58,9 @@ export class DefaultRuntime {
 
   async #runTurn(id: AgentID, signal: AbortSignal): Promise<void> {
     const maxSteps = this.#ports.maxStepsOf(id)
-    for (let step = 0; step < (maxSteps > 0 ? maxSteps : 8); step++) {
+    // maxSteps 0 = 无限（正常默认）；正数 = 受限场景步数帽
+    const limit = maxSteps > 0 ? maxSteps : Number.POSITIVE_INFINITY
+    for (let step = 0; step < limit; step++) {
       if (signal.aborted) break
       const messages = this.#ports.snapshotOf(id)
       const err = validateSequence(messages)

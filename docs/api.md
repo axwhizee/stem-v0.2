@@ -35,6 +35,10 @@
 |---|---|
 | `PostOffice` | deposit/notifyReady/fillPending/broadcast |
 | `Delivery` `PendingCall` `TimerPort` | 投递与定时端口 |
+| `ContextStrategy` `CorpusView` `Trigger` | 策略契约 |
+| `ContextPipeline` | enter/snapshot |
+| `createClassicStrategy` `createNoneStrategy` `createStrategyRegistry` | 内置策略 |
+| `collectStamp` `projectMessages` | 打戳 |
 
 ### 1.4 `src/core/gateway`
 
@@ -44,16 +48,7 @@
 | `toChatMessage` `toProtocolContent` | Message→协议 |
 | `createOpenAiCompatibleGateway` `FakeGateway` `GatewayError` | 实现与替身 |
 
-### 1.5 `src/core/context`
-
-| 符号 | 摘要 |
-|---|---|
-| `ContextStrategy` `CorpusView` `Trigger` | 策略契约 |
-| `ContextPipeline` | enter/snapshot |
-| `createClassicStrategy` `createNoneStrategy` `createStrategyRegistry` | 内置策略 |
-| `collectStamp` `projectMessages` | 打戳 |
-
-### 1.6 `src/core/tools`
+### 1.5 `src/core/tools`
 
 | 符号 | 摘要 |
 |---|---|
@@ -61,7 +56,7 @@
 | `ToolCapabilityRegistry` | drain/materialize/execute |
 | `toolOk` `toolError` `fromThrown` `validateArgs` | 输出与校验 |
 
-### 1.7 `src/core/toolagent` / `pilot` / `runtime` / `kernel` / `boot` / `ports` / `events` / `logging` / `config`
+### 1.6 `src/core/toolagent` / `pilot` / `runtime` / `kernel` / `boot` / `ports` / `events` / `logging` / `config`
 
 | 模块 | 典型出口 |
 |---|---|
@@ -75,13 +70,13 @@
 | logging | `Logger` `LogSink` `MemoryLogSink` |
 | config | `StemConfig` `parseStemConfig` `defaultStemConfig` |
 
-### 1.8 `extension`
+### 1.7 `extension`
 
 | 路径 | 出口 |
 |---|---|
 | `extension/agent` | `loadAgentClassDir` `parseAgentClassFile` |
 | `extension/strategy` | `createCortexStrategy` `spliceNoteSlot` |
-| `extension/tools` | `createReadTool` `createBashTool` |
+| `extension/tools` | `createReadTool` `createWriteTool` `createEditTool` `createGrepTool` `createGlobTool` `createBashTool` |
 
 ---
 
@@ -126,7 +121,7 @@ shell/host/bootStem
   stem.db        SQLite（宿主实现）
 ```
 
-`stem.jsonc` 要点：`user.model` 必填；`providers.*.apiKeyEnv` 密钥只经 env 名；`context.stamp`；`sendCountdown`。
+`stem.jsonc` 要点：`user.model` 必填；`providers.*.key_env` 密钥只经 env 名；`stamp`；`user.sendCountdown`；extension 点名进 `extensions`。
 
 ---
 

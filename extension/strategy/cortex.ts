@@ -8,7 +8,7 @@ import type {
   CorpusView,
   OrchestrateResult,
   Trigger,
-} from '../../src/core/context/index.ts'
+} from '../../src/core/post/index.ts'
 import type { Message, ContentPart } from '../../src/core/model/index.ts'
 import { validateSequence, makeTextMessage } from '../../src/core/model/index.ts'
 import type { ToolCapability } from '../../src/core/tools/index.ts'

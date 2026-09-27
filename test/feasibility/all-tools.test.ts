@@ -11,7 +11,7 @@ import { createSystem } from '../../src/core/boot/index.ts'
 import {
   createClassicStrategy,
   createNoneStrategy,
-} from '../../src/core/context/index.ts'
+} from '../../src/core/post/index.ts'
 import { createCortexStrategy } from '../../extension/strategy/index.ts'
 import { createReadTool } from '../../extension/tools/read.ts'
 import { createBashTool } from '../../extension/tools/bash.ts'

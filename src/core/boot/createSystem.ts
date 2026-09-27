@@ -1,16 +1,17 @@
 // 组合根 —— 唯一 new 与 init 序列。不持业务状态。
 
 import { LineageTree } from '../lineage/index.ts'
-import { PostOffice, type TimerPort } from '../post/index.ts'
-import { ToolCapabilityRegistry, type ToolCapability, type AccessResolver } from '../tools/index.ts'
 import {
+  PostOffice,
+  type TimerPort,
   ContextPipeline,
   createClassicStrategy,
   createNoneStrategy,
   createStrategyRegistry,
   type ContextStrategy,
   type StampConfig,
-} from '../context/index.ts'
+} from '../post/index.ts'
+import { ToolCapabilityRegistry, type ToolCapability, type AccessResolver } from '../tools/index.ts'
 import { Kernel } from '../kernel/index.ts'
 import { createPilot, type Pilot } from '../pilot/index.ts'
 import { EventHub } from '../events/index.ts'
@@ -31,7 +32,7 @@ export type HostPorts = {
   /** 根（user#0）类基因；缺省内置 user */
   readonly userGenes?: import('../model/index.ts').ClassGenes
   /** core classic 可调参数（水位等）；策略实现仍在 classic 模块 */
-  readonly classicOptions?: import('../context/strategies/classic.ts').ClassicOptions
+  readonly classicOptions?: import('../post/strategies/classic.ts').ClassicOptions
   /** 额外策略（extension/custom）；core 只自带 classic/none */
   readonly strategies?: readonly ContextStrategy[]
   /** 快递员送信钩子；缺省只发 letter 事件 */

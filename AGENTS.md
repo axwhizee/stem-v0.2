@@ -42,18 +42,21 @@ python3 run-docker.py       # 容器一键起
 ```text
 src/core/       纯 TS 零平台依赖
   config/       StemConfig + JSONC + defaults（首启模板）+ agentFile（.stem/agent 契约）
-  context/      邮局 + Waiter + strategies/(classic/cortex/none)
+  post/         邮局：信箱/管道/策略/(classic/none)/打戳/快递员窗口
   events/       PilotEvent + EventHub
   gateway/      ModelGateway + openaiCompatible + FakeGateway
-  main/         组合根 + runInit + runtime + toolWiring
-  kernel/       Kernel / TemplateRegistry / InstanceManager + 端口
+  boot/         组合根 createSystem + restore
+  runtime/      DefaultRuntime（送信驱动轮循环）
+  kernel/       Kernel / 类注册 / 实例化 / 写面
   lineage/      LineageTree（拓扑+能力+canReach）
   logging/      LogEvent + Logger + forget
   pilot/        根 user#0 扮演接口
+  toolagent/    ToolAgent + invoke
   tools/        注册表 + 三态代数 + output + internal/
-shell/          cli / webui / dashboard / feishu
-extension/      tools / agent / context（config 点名）
-test/           support / feasibility / space-demo
+  ports/        存储端口契约与内存实现
+shell/          cli / webui / dashboard / feishu / host
+extension/      tools / agent / strategy（config 点名）
+test/           feasibility / space-live
 docs/           architecture / contributor / scenarios / api（交付）
 ```
 

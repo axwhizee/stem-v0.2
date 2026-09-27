@@ -17,7 +17,6 @@ const modules = [
   'src/core/lineage/index.ts',
   'src/core/post/index.ts',
   'src/core/gateway/index.ts',
-  'src/core/context/index.ts',
   'src/core/tools/index.ts',
   'src/core/toolagent/index.ts',
   'src/core/pilot/index.ts',

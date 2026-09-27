@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createClassicStrategy, createNoneStrategy } from './strategies/index.ts'
 import { projectMessages, collectStamp } from './stamp.ts'
 import { ContextPipeline } from './pipeline.ts'
-import { PostOffice, type TimerPort } from '../post/index.ts'
+import { PostOffice, type TimerPort } from './PostOffice.ts'
 import {
   makeAgentID,
   makeTextMessage,

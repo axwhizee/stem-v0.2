@@ -60,12 +60,12 @@ export type BootResult = {
   readonly close: () => Promise<void>
 }
 
-/** 装载 extension 策略（core 不耦合实现）；配置由策略自持 jsonc。 */
+/** 装载 extension 策略（core 不耦合实现）；参数来自 stem.jsonc extensions.strategy。 */
 async function loadExtensionStrategies(
   projectRoot: string,
   complete: (prompt: string) => Promise<string>,
-): Promise<import('../../src/core/context/index.ts').ContextStrategy[]> {
-  const out: import('../../src/core/context/index.ts').ContextStrategy[] = []
+): Promise<import('../../src/core/post/index.ts').ContextStrategy[]> {
+  const out: import('../../src/core/post/index.ts').ContextStrategy[] = []
   try {
     const mod = await import('../../extension/strategy/index.ts')
     if (typeof mod.createCortexStrategy === 'function') {

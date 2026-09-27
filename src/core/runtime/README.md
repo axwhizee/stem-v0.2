@@ -35,7 +35,7 @@ processDelivery(delivery)
 1. **自身写回不重投递**：assistant/tool 只 `deposit`，不 `notifyReady`，防止自激循环。
 2. 快照非法（未决未闭合）→ 直接 return，等 fill。
 3. 中断：`interrupt(id)` abort 控制器；下轮 `interrupted`。
-4. 步数：`maxStepsOf`；0 视为默认上限 8，防失控。
+4. 步数：`maxStepsOf`；0 = 无限（正常默认），正数为受限/成本敏感帽。
 5. 权限：execute 走 `AccessResolver`，与 materialize 同源。
 
 ---
