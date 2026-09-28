@@ -8,8 +8,7 @@ import { createSystem } from '../../src/core/boot/index.ts'
 import { DefaultRuntime } from '../../src/core/runtime/index.ts'
 import { FakeGateway, textEvents } from '../../src/core/gateway/index.ts'
 import { allowAll, ToolCapabilityRegistry, toolOk, type ToolCapability } from '../../src/core/tools/index.ts'
-import { createPilot } from '../../src/core/pilot/index.ts'
-import { makeTextMessage, ROOT_AGENT_ID } from '../../src/core/model/index.ts'
+import { ROOT_AGENT_ID } from '../../src/core/model/index.ts'
 import type { TimerPort } from '../../src/core/post/index.ts'
 
 const space = mkdtempSync(join(tmpdir(), 'stem-smoke-'))
@@ -62,24 +61,7 @@ system.events.on((e) => {
   if (e.type === 'letter') events.push(`letter:${e.agentId}`)
 })
 
-const pilot = createPilot({
-  send: async (as, text) => {
-    await system.pipeline.enter(
-      {
-        id: `u-${Date.now()}`,
-        agentId: as,
-        at: Date.now(),
-        valid: true,
-        turn: 0,
-        indexInTurn: 0,
-        from: 'user',
-        message: makeTextMessage('user', text),
-      },
-      'user_prompt',
-    )
-  },
-  peek: (as) => system.post.boxOf(as).map((e) => e.message),
-})
+const pilot = system.pilot
 
 console.log('== stem offline smoke ==')
 console.log('space:', space)

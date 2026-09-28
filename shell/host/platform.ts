@@ -446,6 +446,10 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
         .boxOf(as)
         .filter((e) => e.valid)
         .map((e) => e.message as Message),
+    callTool: (as, name, input) =>
+      system.tools.execute(as, name, input, access, {
+        callId: `pilot-${Date.now()}`,
+      }),
   })
 
   return {

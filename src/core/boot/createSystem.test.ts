@@ -39,6 +39,8 @@ describe('createSystem', () => {
     assert.ok(sys.post.boxOf(makeAgentID('0')).length >= 1)
     const tools = sys.tools.materialize('0', allowAll())
     assert.ok(tools.some((t) => t.name === 'ping'))
+    const call = await sys.pilot.callTool('ping', {})
+    assert.equal(call.kind, 'tool_ok')
     await sys.dispose()
   })
 

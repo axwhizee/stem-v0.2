@@ -222,6 +222,9 @@ export async function createSystem(host: HostPorts): Promise<StemSystem> {
         .boxOf(as)
         .filter((e) => e.valid)
         .map((e) => e.message as Message),
+    // 完整工具面：与 agent 同一 execute/权限收敛，非旁路
+    callTool: (as, name, input) =>
+      tools.execute(as, name, input, host.access, { callId: `pilot-${Date.now()}` }),
   })
 
   log.info('boot', 'stem system ready', { root: ROOT_AGENT_ID })

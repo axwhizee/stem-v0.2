@@ -19,18 +19,22 @@
 ## 2. API
 
 ```ts
-createPilot({ send, peek, now? }, actAs = '0')
+createPilot({ send, peek, callTool, now? }, actAs = '0')
 
-pilot.send(text)      // 以 actAs 发出
-pilot.peek()          // 该视角可见的最近消息（只读）
-pilot.play(otherId)   // 换扮演对象，共用同一 deps
+pilot.send(text)            // 以 actAs 发出
+pilot.peek()                // 该视角可见的最近消息（只读）
+pilot.callTool(name, input) // 完整工具面：与普通 agent 同权调用
+pilot.play(otherId)         // 换扮演对象，共用同一 deps
 ```
 
 | 依赖 | 语义 |
 |---|---|
 | `send(as, text)` | 注入 kernel/管道的用户输入口 |
 | `peek(as)` | 只读查询端口 |
+| `callTool(as, name, input)` | `tools.execute` + 该实例权限收敛；**非旁路** |
 | `play(id)` | 理论可扮演任意实例；仍走同一机制 |
+
+`user#0` 理应能调用其清单内全部工具（internal/extension/custom），与其它 agent 一样；shell 是否暴露 UI 是 shell 的事。
 
 ---
 
