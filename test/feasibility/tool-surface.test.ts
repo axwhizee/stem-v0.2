@@ -67,7 +67,14 @@ describe('全工具启用检查', () => {
     assert.ok((await call('glob', { pattern: '*.txt', dir: space })).kind === 'tool_ok')
     assert.ok((await call('bash', { command: 'echo tool-surface' })).kind === 'tool_ok')
     assert.ok((await call('websearch', { query: 'stem' })).kind === 'tool_ok')
+    mkdirSync(join(space, '.stem', 'skills', 'demo'), { recursive: true })
+    writeFileSync(
+      join(space, '.stem', 'skills', 'demo', 'SKILL.md'),
+      '---\nname: demo\ndescription: demo skill\n---\nDemo body.',
+      'utf8',
+    )
     assert.ok((await call('skill', { name: 'demo' })).kind === 'tool_ok')
+    assert.ok((await call('skill', {})).kind === 'tool_ok')
 
     // 类 / 实例
     const created = await call('agent_class_create', {

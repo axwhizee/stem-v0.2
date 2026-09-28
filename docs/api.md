@@ -76,7 +76,7 @@
 |---|---|
 | `extension/agent` | `loadAgentClassDir` `parseAgentClassFile` |
 | `extension/strategy` | `createCortexStrategy` `spliceNoteSlot` |
-| `extension/tools` | `createReadTool` `createWriteTool` `createEditTool` `createGrepTool` `createGlobTool` `createBashTool` |
+| `extension/tools` | `createReadTool` `createWriteTool` `createEditTool` `createGrepTool` `createGlobTool` `createBashTool` `createSkillTool` `createWebfetchTool` `createWebsearchTool` `loadMcpTools` `parseMcpConfig` |
 
 ---
 

@@ -30,21 +30,16 @@ export type CortexState = {
 export type CortexOptions = {
   readonly homeRoot: string
   readonly complete?: (prompt: string) => Promise<string>
+  /** 触发 dream 的 token 水位 */
   readonly dreamAt?: number
+  /** 策略 system 贡献者 */
   readonly note?: string
-  /** 策略自持配置（jsonc 路径）；缺省 homeRoot 同级 cortex.jsonc */
-  readonly configFile?: string
-}
-
-/** 策略自维护配置，不进 stem.jsonc。 */
-export function loadCortexConfig(file: string): { dreamAt?: number; note?: string } {
-  try {
-    const text = readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-    const o = JSON.parse(text) as { dreamAt?: number; note?: string }
-    return { dreamAt: o.dreamAt, note: o.note }
-  } catch {
-    return {}
-  }
+  /** STM 条数上限 */
+  readonly stmMax?: number
+  /** LTM 条数上限 */
+  readonly ltmMax?: number
+  /** STM 段读取的近期语料窗口（字符） */
+  readonly recentChars?: number
 }
 
 function homeOf(homeRoot: string, agentId: string): string {
@@ -139,8 +134,10 @@ export function spliceNoteSlot(
 export function createCortexStrategy(options: CortexOptions): ContextStrategy {
   const state = new Map<string, CortexState>()
   const homeRoot = options.homeRoot
-  const fileCfg = options.configFile ? loadCortexConfig(options.configFile) : {}
-  const dreamAt = options.dreamAt ?? fileCfg.dreamAt ?? 8000
+  const dreamAt = options.dreamAt ?? 8000
+  const stmMax = options.stmMax ?? 12
+  const ltmMax = options.ltmMax ?? 20
+  const recentChars = options.recentChars ?? 4000
 
   const stateOf = (id: string): CortexState => {
     let s = state.get(id)
@@ -237,9 +234,9 @@ export function createCortexStrategy(options: CortexOptions): ContextStrategy {
           .join('\n')
         // 段1 → 暂存 STM；不合格不轮替
         const stmReport = await options.complete(
-          `Summarize the working context into short-term notes (STM).\n${corpusText.slice(-4000)}`,
+          `Summarize the working context into short-term notes (STM).\n${corpusText.slice(-recentChars)}`,
         )
-        const nextStm = stmReport.split('\n').filter(Boolean).slice(0, 12)
+        const nextStm = stmReport.split('\n').filter(Boolean).slice(0, stmMax)
         if (nextStm.length === 0) return undefined
 
         const notesText = readNotes(homeRoot, view.agentId).join('\n')
@@ -247,7 +244,7 @@ export function createCortexStrategy(options: CortexOptions): ContextStrategy {
         const ltmReport = await options.complete(
           `Distill long-term memory (LTM) from prior LTM + STM + notes.\n[LTM]\n${s.ltm.join('\n')}\n[STM]\n${nextStm.join('\n')}\n[Notes]\n${notesText}`,
         )
-        const nextLtm = ltmReport.split('\n').filter(Boolean).slice(0, 20)
+        const nextLtm = ltmReport.split('\n').filter(Boolean).slice(0, ltmMax)
         if (nextLtm.length === 0) return undefined
 
         // 双段合格才 rotate

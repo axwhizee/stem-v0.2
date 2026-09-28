@@ -4,18 +4,21 @@
 import { createSystem, restoreInstances, restoreEnvelopes, type StemSystem } from '../../src/core/boot/index.ts'
 import { createMailListTool, createMailSendTool, createMailParticipantsTool, createAgentClassCreateTool, createAgentClassUpdateTool, createAgentClassListTool, createAgentInstantiateTool, createAgentUpdateTool, createAgentInspectTool, createAgentListTool, createAgentAncestryTool, createAgentDescendantsTool, createAgentTerminateTool, createContextOverviewTool, createContextExportTool, createContextRemoveTool, createContextEditTool, createContextApplyTool, createTelemetryQueryTool } from '../../src/core/tools/internal/index.ts'
 import { loadAgentClassDir, writeAgentClassFile } from '../../extension/agent/index.ts'
-import { createReadTool } from '../../extension/tools/read.ts'
-import { createBashTool } from '../../extension/tools/bash.ts'
 import {
+  createReadTool,
   createWriteTool,
   createEditTool,
   createGrepTool,
   createGlobTool,
+  createBashTool,
   createSkillTool,
   createWebfetchTool,
   createWebsearchTool,
-} from '../../extension/tools/fs.ts'
+  loadMcpTools,
+  parseMcpConfig,
+} from '../../extension/tools/index.ts'
 import { createToolAgent } from '../../src/core/toolagent/index.ts'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { DefaultRuntime } from '../../src/core/runtime/index.ts'
 import { createPilot, type Pilot } from '../../src/core/pilot/index.ts'
@@ -34,6 +37,7 @@ import {
   loadStemConfig,
   resolveProjectRoot,
   stemDir,
+  type StemConfig,
 } from './config.ts'
 import { createSqliteStores } from './store.ts'
 
@@ -64,16 +68,22 @@ export type BootResult = {
 async function loadExtensionStrategies(
   projectRoot: string,
   complete: (prompt: string) => Promise<string>,
+  config: StemConfig,
 ): Promise<import('../../src/core/post/index.ts').ContextStrategy[]> {
   const out: import('../../src/core/post/index.ts').ContextStrategy[] = []
   try {
     const mod = await import('../../extension/strategy/index.ts')
     if (typeof mod.createCortexStrategy === 'function') {
+      const cortex = config.extensions?.strategy?.cortex
       out.push(
         mod.createCortexStrategy({
           homeRoot: join(stemDir(projectRoot), 'home'),
           complete,
-          configFile: join(stemDir(projectRoot), 'strategy', 'cortex.jsonc'),
+          ...(cortex?.dreamAt !== undefined ? { dreamAt: cortex.dreamAt } : {}),
+          ...(cortex?.note !== undefined ? { note: cortex.note } : {}),
+          ...(cortex?.stmMax !== undefined ? { stmMax: cortex.stmMax } : {}),
+          ...(cortex?.ltmMax !== undefined ? { ltmMax: cortex.ltmMax } : {}),
+          ...(cortex?.recentChars !== undefined ? { recentChars: cortex.recentChars } : {}),
         }),
       )
     }
@@ -177,6 +187,24 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
     return r.text
   }
 
+  // MCP：.stem/mcp.jsonc 点名服务器，init 连接投影
+  let mcpDispose: (() => Promise<void>) | undefined
+  let mcpTools: Awaited<ReturnType<typeof loadMcpTools>>['tools'] = []
+  {
+    const mcpFile = join(stemDir(opts.projectRoot), 'mcp.jsonc')
+    if (existsSync(mcpFile)) {
+      const parsed = parseMcpConfig(readFileSync(mcpFile, 'utf8'))
+      if ('kind' in parsed) {
+        console.warn(`[stem] mcp config: ${parsed.detail}`)
+      } else {
+        const loadedMcp = await loadMcpTools(parsed.mcpServers, process.env)
+        for (const issue of loadedMcp.issues) console.warn(`[stem] ${issue}`)
+        mcpTools = loadedMcp.tools
+        mcpDispose = loadedMcp.dispose
+      }
+    }
+  }
+
   const system = await createSystem({
     gateway,
     timer,
@@ -191,6 +219,7 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
       sendCountdown: config.user?.sendCountdown,
       temperature: config.user?.temperature,
       effort: config.user?.effort,
+      ...(config.user?.maxSteps !== undefined ? { maxSteps: config.user.maxSteps } : {}),
     },
     tools: [
       ...(opts.hostTools ?? []),
@@ -199,10 +228,11 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
       createEditTool(),
       createGrepTool(),
       createGlobTool(),
-      createSkillTool(),
+      createSkillTool({ skillsRoot: join(stemDir(opts.projectRoot), 'skills') }),
       createWebfetchTool(),
       createWebsearchTool(),
       ...(shellRunner ? [createBashTool(shellRunner)] : []),
+      ...mcpTools,
     ],
     toolFactories: ({ post }) => [
       createMailSendTool({ post }),
@@ -235,10 +265,10 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
     ],
     classicOptions: {
       complete: completePrompt,
-      compactAt: config.context?.compact?.at ?? config.context?.watermark,
+      compactAt: config.classic?.window,
     },
-    strategies: await loadExtensionStrategies(opts.projectRoot, completePrompt),
-    stamp: config.context?.stamp ?? { source: true },
+    strategies: await loadExtensionStrategies(opts.projectRoot, completePrompt, config),
+    stamp: config.stamp ?? { source: true },
     logSink: {
       write: (e) => {
         if (e.level === 'error' || e.level === 'warn') {
@@ -378,6 +408,7 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
     projectRoot: opts.projectRoot,
     close: async () => {
       await system.dispose()
+      await mcpDispose?.()
       stores?.close()
     },
   }

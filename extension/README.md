@@ -10,20 +10,27 @@
 | `agent/` | `.stem/agent/` | agent 类 |
 | `strategy/` | `.stem/strategy/` | 上下文（记忆）策略 |
 | `tools/` | `.stem/tools/` | 工具 |
-| `skills/`（可选） | `.stem/skills/` | 技能正文 |
+| `skills/`（内容） | `.stem/skills/` | 技能正文 `SKILL.md` |
 
 装载器按**同一套目录真相**发现：extension 随仓库/镜像分发，custom 由用户空间写入；boot 发现段一次读入，运行期不热扫。
+
+## 装载规则
+
+- **extension 必须点名**（`stem.jsonc → extensions.tools|agent|strategy`）：未点名 = 不装载，实现按需启动与系统裁剪。
+- **custom 不点名**：`.stem/tools|agent|strategy/` 目录扫描；工具读入默认 `hidden`。
+- `registerAccess` 随点名注入；custom 读入恒 `hidden`。
 
 ## 当前内容
 
 | 路径 | 说明 |
 |---|---|
 | `tools/read.ts` | 读文本文件 |
+| `tools/fs.ts` | write / edit（唯一匹配）/ grep（正则）/ glob |
 | `tools/bash.ts` | 跑命令（宿主 ShellRunner） |
-| `strategy/` | 扩展策略位（cortex 等） |
+| `tools/skill.ts` | 渐进披露：列技能 / 读 `SKILL.md` 正文 |
+| `tools/web.ts` | webfetch / websearch |
+| `tools/mcp.ts` | MCP 客户端：`.stem/mcp.jsonc` 投影远程工具并转发 |
+| `strategy/` | cortex 等扩展策略 |
 | `agent/` | 扩展类位 |
 
-## 装载
-
-`config.extensions.tools` 点名或目录扫描 → 无序清单 → `registry.drain`。  
-`registerAccess` 随点名注入；custom 读入恒 `hidden`。
+`tools/index.ts` 为唯一出口。

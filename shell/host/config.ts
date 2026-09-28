@@ -9,6 +9,8 @@ import {
   type ConfigIssue,
 } from '../../src/core/config/index.ts'
 
+export type { StemConfig }
+
 export function resolveProjectRoot(argv: readonly string[] = process.argv.slice(2)): string {
   const positional = argv.find((a) => !a.startsWith('-'))
   return resolve(positional ?? process.env.STEM_PROJECT_ROOT ?? process.cwd())

@@ -1,7 +1,8 @@
 # extension/strategy —— 扩展记忆策略
 
 > 目录与用户空间 `.stem/strategy/` 同构。  
-> **cortex 等非内置策略住这里**；core 内置仅 classic / none。
+> **cortex 等非内置策略住这里**；core 内置仅 classic / none。  
+> 参数来自 `stem.jsonc → extensions.strategy.<名>`（点名装载；如 cortex 的 `dreamAt/note/stmMax/ltmMax/recentChars`）。
 
 ## cortex 笔记假 tool 槽（关键实现细节）
 

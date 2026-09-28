@@ -1,5 +1,6 @@
-// stem 空间配置 —— 唯一配置面 stem.jsonc（对齐旧库契约：snake_case）。
-// 密钥只经 key_env 变量名；类/策略/工具目录即真相。
+// stem 空间配置 —— 唯一配置面 stem.jsonc（snake_case）。
+// 分区铁律：core 段落只谈 core；extension 的一切进 extensions 伞下。
+// 密钥只经 key_env 变量名；类/策略/工具目录即真相，点名只决定「装不装」。
 
 export type AccessWord = 'hidden' | 'allow' | 'deny'
 
@@ -8,7 +9,7 @@ export type ProviderConfig = {
   readonly base_url: string
   /** 密钥环境变量名；配置永不落明文 */
   readonly key_env?: string
-  /** 启用模型白名单；空/缺省 = 全启用 */
+  /** 该提供商可用模型白名单；空/缺省 = 全启用 */
   readonly models?: readonly string[]
 }
 
@@ -16,32 +17,38 @@ export type UserClassConfig = {
   readonly name?: string
   readonly description?: string
   readonly systemPrompt?: string
-  /** 根收敛清单：键即白名单；未列 = deny（对子孙仅显式判定） */
+  /** 根收敛清单：键即白名单；未列 = hidden */
   readonly tools?: Readonly<Record<string, AccessWord>>
   readonly contextStrategy?: string
   readonly model?: string
+  /** 快递员合并窗口（秒）；实例属性，子实例可继承 */
   readonly sendCountdown?: number
   readonly temperature?: number
   readonly effort?: 'none' | 'low' | 'medium' | 'high'
+  /** 0 = 无限（正常默认）；正数 = 受限/成本敏感步数帽 */
+  readonly maxSteps?: number
 }
 
-export type ContextConfig = {
+export type StampConfigFile = {
+  readonly source?: boolean
+  readonly timestamp?: boolean
+  readonly delay?: boolean
+  readonly tokens?: boolean
+}
+
+/** core 内置策略 classic 参数 */
+export type ClassicConfig = {
+  /** 触发上下文压缩的水位（token） */
   readonly window?: number
-  /** 上下文水位（token）：classic compact / cortex dream 触发线 */
-  readonly watermark?: number
-  readonly stamp?: {
-    readonly source?: boolean
-    readonly timestamp?: boolean
-    readonly delay?: boolean
-    readonly tokens?: boolean
-  }
-  readonly compact?: {
-    readonly enabled?: boolean
-    readonly threshold?: number
-    readonly keepRecentTurns?: number
-    /** 绝对 token 水位（优先于 threshold 比例） */
-    readonly at?: number
-  }
+}
+
+/** 扩展策略 cortex 参数（extensions.strategy.cortex） */
+export type CortexConfig = {
+  readonly dreamAt?: number
+  readonly note?: string
+  readonly stmMax?: number
+  readonly ltmMax?: number
+  readonly recentChars?: number
 }
 
 export type BashConfig = {
@@ -52,21 +59,20 @@ export type BashConfig = {
 }
 
 export type ExtensionsConfig = {
-  /** 点名装载 + 注册声明；未点名 = 不存在 */
+  /** 点名装载 + 注册声明；未点名 = 不装载 */
   readonly tools?: Readonly<Record<string, AccessWord>>
   readonly agent?: readonly string[]
-  readonly strategy?: readonly string[]
+  /** 扩展策略参数：键 = 策略名 */
+  readonly strategy?: Readonly<Record<string, CortexConfig>>
 }
 
 export type StemConfig = {
   readonly providers?: Readonly<Record<string, ProviderConfig>>
   readonly user?: UserClassConfig
-  readonly context?: ContextConfig
+  readonly stamp?: StampConfigFile
+  readonly classic?: ClassicConfig
   readonly bash?: BashConfig
-  readonly tools?: { readonly outputLimit?: number }
-  readonly sendCountdown?: number
   readonly extensions?: ExtensionsConfig
-  readonly custom?: Readonly<Record<string, unknown>>
 }
 
 export function defaultStemConfig(): StemConfig {
@@ -82,23 +88,34 @@ export function defaultStemConfig(): StemConfig {
       tools: {
         bash: 'allow',
         read: 'allow',
+        write: 'allow',
+        edit: 'allow',
+        grep: 'allow',
+        glob: 'allow',
         agent_instantiate: 'allow',
         agent_class_list: 'allow',
         agent_class_create: 'allow',
         agent_inspect: 'allow',
         agent_update: 'allow',
         mail_send: 'allow',
-        mail_list: 'allow',
         cortex_add_note: 'allow',
         cortex_del_note: 'allow',
       },
+      sendCountdown: 3,
+      maxSteps: 0,
     },
-    context: {
-      window: 1000000,
-      stamp: { source: true },
-      compact: { enabled: true, threshold: 0.8, keepRecentTurns: 3 },
+    stamp: { source: true },
+    classic: { window: 128000 },
+    extensions: {
+      tools: {
+        read: 'allow',
+        write: 'allow',
+        edit: 'allow',
+        grep: 'allow',
+        glob: 'allow',
+        bash: 'allow',
+      },
     },
-    sendCountdown: 1000,
   }
 }
 
@@ -113,7 +130,6 @@ export function parseStemConfig(text: string): StemConfig | ConfigIssue {
     if (!raw || typeof raw !== 'object') {
       return { kind: 'config_parse_error', detail: 'not an object' }
     }
-    // 兼容 camelCase 旧草稿字段
     const providers = normalizeProviders(raw.providers)
     const user = normalizeUser(raw.user)
     if (user && user.model === undefined) {
@@ -121,12 +137,13 @@ export function parseStemConfig(text: string): StemConfig | ConfigIssue {
     }
     const base = defaultStemConfig()
     return {
-      ...base,
-      ...raw,
-      providers,
+      providers: providers ?? base.providers,
       user: { ...base.user, ...user },
-      context: { ...base.context, ...(raw.context as ContextConfig | undefined) },
-    } as StemConfig
+      stamp: { ...base.stamp, ...(raw.stamp as StampConfigFile | undefined) },
+      classic: { ...base.classic, ...(raw.classic as ClassicConfig | undefined) },
+      bash: raw.bash as BashConfig | undefined,
+      extensions: normalizeExtensions(raw.extensions),
+    }
   } catch (error) {
     return {
       kind: 'config_parse_error',
@@ -164,6 +181,24 @@ function normalizeUser(value: unknown): UserClassConfig | undefined {
     sendCountdown: o.sendCountdown as number | undefined,
     temperature: o.temperature as number | undefined,
     effort: o.effort as UserClassConfig['effort'],
+    maxSteps: o.maxSteps as number | undefined,
+  }
+}
+
+function normalizeExtensions(value: unknown): ExtensionsConfig | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const o = value as Record<string, unknown>
+  const strategyRaw = o.strategy
+  const strategy: Record<string, CortexConfig> = {}
+  if (strategyRaw && typeof strategyRaw === 'object') {
+    for (const [name, cfg] of Object.entries(strategyRaw as Record<string, unknown>)) {
+      if (cfg && typeof cfg === 'object') strategy[name] = cfg as CortexConfig
+    }
+  }
+  return {
+    tools: o.tools as ExtensionsConfig['tools'],
+    agent: o.agent as string[] | undefined,
+    strategy: Object.keys(strategy).length ? strategy : undefined,
   }
 }
 
