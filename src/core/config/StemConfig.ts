@@ -92,6 +92,9 @@ export function defaultStemConfig(): StemConfig {
         edit: 'allow',
         grep: 'allow',
         glob: 'allow',
+        webfetch: 'allow',
+        websearch: 'allow',
+        skill: 'allow',
         agent_instantiate: 'allow',
         agent_class_list: 'allow',
         agent_class_create: 'allow',
@@ -114,6 +117,9 @@ export function defaultStemConfig(): StemConfig {
         grep: 'allow',
         glob: 'allow',
         bash: 'allow',
+        webfetch: 'allow',
+        websearch: 'allow',
+        skill: 'allow',
       },
     },
   }
@@ -136,13 +142,19 @@ export function parseStemConfig(text: string): StemConfig | ConfigIssue {
       return { kind: 'config_parse_error', detail: 'user.model required' }
     }
     const base = defaultStemConfig()
+    const ext = normalizeExtensions(raw.extensions)
     return {
       providers: providers ?? base.providers,
       user: { ...base.user, ...user },
       stamp: { ...base.stamp, ...(raw.stamp as StampConfigFile | undefined) },
       classic: { ...base.classic, ...(raw.classic as ClassicConfig | undefined) },
       bash: raw.bash as BashConfig | undefined,
-      extensions: normalizeExtensions(raw.extensions),
+      // 点名清单整段替换；未写 extensions.tools 则用默认点名
+      extensions: {
+        tools: ext?.tools ?? base.extensions?.tools,
+        agent: ext?.agent ?? base.extensions?.agent,
+        strategy: ext?.strategy ?? base.extensions?.strategy,
+      },
     }
   } catch (error) {
     return {

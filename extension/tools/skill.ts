@@ -34,9 +34,18 @@ function parseFrontmatter(text: string): { name?: string; description?: string; 
   if (!m) return { body: text }
   const header = m[1] ?? ''
   const body = m[2] ?? ''
-  const name = /^name:\s*(.+)$/m.exec(header)?.[1]?.trim()
-  const description = /^description:\s*(.+)$/m.exec(header)?.[1]?.trim()
+  const name = unquote(/^name:\s*(.+)$/m.exec(header)?.[1]?.trim())
+  const description = unquote(/^description:\s*(.+)$/m.exec(header)?.[1]?.trim())
   return { name, description, body }
+}
+
+function unquote(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined
+  const s = value.trim()
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    return s.slice(1, -1)
+  }
+  return s
 }
 
 function listSkills(skillsRoot: string): SkillEntry[] {

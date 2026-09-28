@@ -93,6 +93,32 @@ async function loadExtensionStrategies(
   return out
 }
 
+/** extension 工具必须点名才装载：未点名 = 不装载；点名值 = registerAccess。 */
+function namedExtensionTools(
+  config: StemConfig,
+  deps: { skillsRoot: string; shellRunner: ShellRunner | false | undefined },
+): ToolCapability[] {
+  const named = config.extensions?.tools ?? {}
+  const out: ToolCapability[] = []
+  const take = (name: string, make: () => ToolCapability | undefined): void => {
+    const access = named[name]
+    if (access === undefined) return
+    const tool = make()
+    if (!tool) return
+    out.push({ ...tool, registerAccess: access })
+  }
+  take('read', () => createReadTool())
+  take('write', () => createWriteTool())
+  take('edit', () => createEditTool())
+  take('grep', () => createGrepTool())
+  take('glob', () => createGlobTool())
+  take('skill', () => createSkillTool({ skillsRoot: deps.skillsRoot }))
+  take('webfetch', () => createWebfetchTool())
+  take('websearch', () => createWebsearchTool())
+  take('bash', () => (deps.shellRunner ? createBashTool(deps.shellRunner) : undefined))
+  return out
+}
+
 function defaultTimer(): TimerPort {
   return {
     set(ms, fn) {
@@ -223,15 +249,10 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
     },
     tools: [
       ...(opts.hostTools ?? []),
-      createReadTool(),
-      createWriteTool(),
-      createEditTool(),
-      createGrepTool(),
-      createGlobTool(),
-      createSkillTool({ skillsRoot: join(stemDir(opts.projectRoot), 'skills') }),
-      createWebfetchTool(),
-      createWebsearchTool(),
-      ...(shellRunner ? [createBashTool(shellRunner)] : []),
+      ...namedExtensionTools(config, {
+        skillsRoot: join(stemDir(opts.projectRoot), 'skills'),
+        shellRunner,
+      }),
       ...mcpTools,
     ],
     toolFactories: ({ post }) => [
