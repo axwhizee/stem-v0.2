@@ -22,6 +22,10 @@ export type OrchestrateResult = {
   readonly messages: readonly Message[]
   /** 策略要求的通知原因（如水位 dream 后 ready） */
   readonly ready?: Trigger
+  /** process 改写语料：作废列出的信封，并把 messages 写回为占位 */
+  readonly rewrite?: {
+    readonly invalidateIds: readonly string[]
+  }
 }
 
 export interface ContextStrategy {

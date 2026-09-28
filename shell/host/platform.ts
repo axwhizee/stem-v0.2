@@ -10,6 +10,7 @@ import {
   createEditTool,
   createGrepTool,
   createGlobTool,
+  createTreeTool,
   createBashTool,
   createSkillTool,
   createWebfetchTool,
@@ -54,6 +55,8 @@ export type BootOptions = {
   readonly timer?: TimerPort
   /** 演示用假网关：自动调用工具并回复 */
   readonly fakeGateway?: boolean
+  /** 自定义网关（监督实验/脚本化轮次）；优先于 fakeGateway */
+  readonly gateway?: ModelGateway
 }
 
 export type BootResult = {
@@ -64,26 +67,40 @@ export type BootResult = {
   readonly close: () => Promise<void>
 }
 
-/** 装载 extension 策略（core 不耦合实现）；参数来自 stem.jsonc extensions.strategy。 */
+/** 装载 extension 策略：extensions.strategy 点名才装载；参数随点名注入。 */
 async function loadExtensionStrategies(
   projectRoot: string,
   complete: (prompt: string) => Promise<string>,
   config: StemConfig,
 ): Promise<import('../../src/core/post/index.ts').ContextStrategy[]> {
   const out: import('../../src/core/post/index.ts').ContextStrategy[] = []
+  const named = config.extensions?.strategy ?? {}
+  if (!Object.keys(named).length) return out
   try {
     const mod = await import('../../extension/strategy/index.ts')
-    if (typeof mod.createCortexStrategy === 'function') {
-      const cortex = config.extensions?.strategy?.cortex
+    const homeRoot = join(stemDir(projectRoot), 'home')
+    const workspaceRoot = projectRoot
+    if (named.cortex && typeof mod.createCortexStrategy === 'function') {
+      const cortex = named.cortex
       out.push(
         mod.createCortexStrategy({
-          homeRoot: join(stemDir(projectRoot), 'home'),
+          homeRoot,
           complete,
-          ...(cortex?.dreamAt !== undefined ? { dreamAt: cortex.dreamAt } : {}),
-          ...(cortex?.note !== undefined ? { note: cortex.note } : {}),
-          ...(cortex?.stmMax !== undefined ? { stmMax: cortex.stmMax } : {}),
-          ...(cortex?.ltmMax !== undefined ? { ltmMax: cortex.ltmMax } : {}),
-          ...(cortex?.recentChars !== undefined ? { recentChars: cortex.recentChars } : {}),
+          ...(cortex.dreamAt !== undefined ? { dreamAt: cortex.dreamAt } : {}),
+          ...(cortex.note !== undefined ? { note: cortex.note } : {}),
+          ...(cortex.stmMax !== undefined ? { stmMax: cortex.stmMax } : {}),
+          ...(cortex.ltmMax !== undefined ? { ltmMax: cortex.ltmMax } : {}),
+          ...(cortex.recentChars !== undefined ? { recentChars: cortex.recentChars } : {}),
+        }),
+      )
+    }
+    if (named.coding && typeof mod.createCodingStrategy === 'function') {
+      const coding = named.coding
+      out.push(
+        mod.createCodingStrategy({
+          workspaceRoot,
+          complete,
+          ...(coding.keepTail !== undefined ? { keepTail: coding.keepTail } : {}),
         }),
       )
     }
@@ -112,6 +129,7 @@ function namedExtensionTools(
   take('edit', () => createEditTool())
   take('grep', () => createGrepTool())
   take('glob', () => createGlobTool())
+  take('tree', () => createTreeTool())
   take('skill', () => createSkillTool({ skillsRoot: deps.skillsRoot }))
   take('webfetch', () => createWebfetchTool())
   take('websearch', () => createWebsearchTool())
@@ -165,8 +183,10 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
     },
   }
   const useFake = opts.fakeGateway === true || process.env.STEM_FAKE_GATEWAY === '1'
-  const gateway: ModelGateway = useFake ? demoGateway : realGateway
-  if (useFake) console.warn('[stem] STEM_FAKE_GATEWAY 演示模式：工具轮可观察，非真实模型')
+  const gateway: ModelGateway = opts.gateway ?? (useFake ? demoGateway : realGateway)
+  if (!opts.gateway && useFake) {
+    console.warn('[stem] STEM_FAKE_GATEWAY 演示模式：工具轮可观察，非真实模型')
+  }
 
   const stores =
     opts.stateStore === false ? undefined : createSqliteStores(defaultDbFile(opts.projectRoot))
@@ -374,6 +394,12 @@ export async function bootStem(opts: BootOptions): Promise<BootResult> {
     system.post.deposit = (envelope) => {
       stores.append(envelope)
       baseDeposit(envelope)
+    }
+    const baseInvalidate = system.post.invalidate.bind(system.post)
+    system.post.invalidate = (agentId, envelopeId, tag) => {
+      const r = baseInvalidate(agentId, envelopeId, tag)
+      if (r) stores.invalidate(agentId, envelopeId, tag)
+      return r
     }
     const persistInstance = (id: AgentID) => {
       const n = system.lineage.get(id)

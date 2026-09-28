@@ -127,6 +127,24 @@ export async function createSystem(host: HostPorts): Promise<StemSystem> {
         stamp,
       }
       const result = await strategy.process?.(view, trigger)
+      if (result?.rewrite) {
+        for (const envId of result.rewrite.invalidateIds) {
+          post.invalidate(id, envId, 'compact')
+        }
+      }
+      if (result?.messages.length) {
+        for (const message of result.messages) {
+          post.deposit({
+            id: `proc-${id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            agentId: id,
+            at: Date.now(),
+            valid: true,
+            turn: 0,
+            indexInTurn: 0,
+            message,
+          })
+        }
+      }
       if (result?.ready) {
         post.notifyReady(id, result.ready, [])
       }

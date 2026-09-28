@@ -62,7 +62,16 @@ describe('全量工具与策略功能', () => {
     mkdirSync(join(space, '.stem', 'agent'), { recursive: true })
     writeFileSync(
       join(space, '.stem', 'stem.jsonc'),
-      JSON.stringify({ user: { model: 'fake/demo' } }),
+      JSON.stringify({
+        user: { model: 'fake/demo' },
+        extensions: {
+          tools: {
+            read: 'allow', write: 'allow', edit: 'allow', grep: 'allow', glob: 'allow',
+            tree: 'allow', bash: 'allow', webfetch: 'allow', websearch: 'allow', skill: 'allow',
+          },
+          strategy: { cortex: {} },
+        },
+      }),
       'utf8',
     )
     boot = await bootStem({

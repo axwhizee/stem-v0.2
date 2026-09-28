@@ -21,6 +21,20 @@ describe('全工具启用检查', () => {
   before(async () => {
     space = mkdtempSync(join(tmpdir(), 'stem-all-'))
     mkdirSync(join(space, '.stem', 'agent'), { recursive: true })
+    writeFileSync(
+      join(space, '.stem', 'stem.jsonc'),
+      JSON.stringify({
+        user: { model: 'opencode-go/deepseek-v4.1-flash' },
+        extensions: {
+          tools: {
+            read: 'allow', write: 'allow', edit: 'allow', grep: 'allow', glob: 'allow',
+            tree: 'allow', bash: 'allow', webfetch: 'allow', websearch: 'allow', skill: 'allow',
+          },
+          strategy: { cortex: {}, coding: {} },
+        },
+      }),
+      'utf8',
+    )
     boot = await bootStem({
       projectRoot: space,
       stateStore: false,
@@ -36,13 +50,14 @@ describe('全工具启用检查', () => {
   it('注册表覆盖旧库工具面', () => {
     const names = new Set(boot.system.tools.names())
     const required = [
-      'bash', 'read', 'write', 'edit', 'grep', 'glob',
+      'bash', 'read', 'write', 'edit', 'grep', 'glob', 'tree',
       'webfetch', 'websearch', 'skill',
       'agent_instantiate', 'agent_list', 'agent_inspect', 'agent_ancestry', 'agent_descendants',
       'agent_class_list', 'agent_class_create', 'agent_class_update', 'agent_update', 'agent_terminate',
       'mail_send', 'mail_list', 'mail_participants',
       'context_overview', 'context_export', 'context_remove', 'context_edit', 'context_apply',
       'telemetry_query', 'cortex_add_note', 'cortex_del_note',
+      'coding_watch', 'coding_unwatch', 'coding_mode', 'coding_status',
     ]
     for (const n of required) assert.ok(names.has(n), `missing ${n}`)
   })
@@ -75,6 +90,10 @@ describe('全工具启用检查', () => {
     )
     assert.ok((await call('skill', { name: 'demo' })).kind === 'tool_ok')
     assert.ok((await call('skill', {})).kind === 'tool_ok')
+    assert.ok((await call('tree', { path: space, depth: 1 })).kind === 'tool_ok')
+    assert.equal((await call('coding_watch', { path: f })).kind, 'tool_ok')
+    assert.equal((await call('coding_status', {})).kind, 'tool_ok')
+    assert.equal((await call('coding_unwatch', { path: f })).kind, 'tool_ok')
 
     // 类 / 实例
     const created = await call('agent_class_create', {

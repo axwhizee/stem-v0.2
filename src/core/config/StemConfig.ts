@@ -51,6 +51,11 @@ export type CortexConfig = {
   readonly recentChars?: number
 }
 
+/** 扩展策略 coding 参数（extensions.strategy.coding） */
+export type CodingStrategyConfig = {
+  readonly keepTail?: number
+}
+
 export type BashConfig = {
   readonly path?: string
   readonly defaultTimeoutMs?: number
@@ -62,8 +67,8 @@ export type ExtensionsConfig = {
   /** 点名装载 + 注册声明；未点名 = 不装载 */
   readonly tools?: Readonly<Record<string, AccessWord>>
   readonly agent?: readonly string[]
-  /** 扩展策略参数：键 = 策略名 */
-  readonly strategy?: Readonly<Record<string, CortexConfig>>
+  /** 扩展策略参数：键 = 策略名（点名即装载） */
+  readonly strategy?: Readonly<Record<string, CortexConfig & CodingStrategyConfig>>
 }
 
 export type StemConfig = {
@@ -116,6 +121,7 @@ export function defaultStemConfig(): StemConfig {
         edit: 'allow',
         grep: 'allow',
         glob: 'allow',
+        tree: 'allow',
         bash: 'allow',
         webfetch: 'allow',
         websearch: 'allow',

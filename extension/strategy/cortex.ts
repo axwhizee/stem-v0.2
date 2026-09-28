@@ -46,6 +46,37 @@ function homeOf(homeRoot: string, agentId: string): string {
   return join(homeRoot, agentId)
 }
 
+function stateFilePath(homeRoot: string, agentId: string): string {
+  return join(homeOf(homeRoot, agentId), '_cortex.json')
+}
+
+function loadPersistedState(homeRoot: string, agentId: string, dreamAt: number): CortexState {
+  try {
+    const raw = JSON.parse(readFileSync(stateFilePath(homeRoot, agentId), 'utf8')) as {
+      ltm?: string[]
+      stm?: string[]
+    }
+    return {
+      ltm: Array.isArray(raw.ltm) ? raw.ltm : [],
+      stm: Array.isArray(raw.stm) ? raw.stm : [],
+      dreamAt,
+      dreaming: false,
+    }
+  } catch {
+    return { ltm: [], stm: [], dreamAt, dreaming: false }
+  }
+}
+
+function persistState(homeRoot: string, agentId: string, s: CortexState): void {
+  try {
+    const dir = homeOf(homeRoot, agentId)
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(stateFilePath(homeRoot, agentId), JSON.stringify({ ltm: s.ltm, stm: s.stm }, null, 2), 'utf8')
+  } catch {
+    // 持久化失败不影响投影
+  }
+}
+
 function listNotes(homeRoot: string, agentId: string): string[] {
   const dir = homeOf(homeRoot, agentId)
   if (!existsSync(dir)) return []
@@ -142,7 +173,7 @@ export function createCortexStrategy(options: CortexOptions): ContextStrategy {
   const stateOf = (id: string): CortexState => {
     let s = state.get(id)
     if (!s) {
-      s = { ltm: [], stm: [], dreamAt, dreaming: false }
+      s = loadPersistedState(homeRoot, id, dreamAt)
       state.set(id, s)
     }
     return s
@@ -250,6 +281,7 @@ export function createCortexStrategy(options: CortexOptions): ContextStrategy {
         // 双段合格才 rotate
         s.stm = nextStm
         s.ltm = nextLtm
+        persistState(homeRoot, view.agentId, s)
         return this.orchestrate(view, 'watermark')
       } catch {
         return undefined
