@@ -15,10 +15,14 @@
     "web": "node --import tsx shell/webui/server.ts",
     "dashboard": "node --import tsx shell/dashboard/server.ts",
     "check-exports": "node --import tsx script/check-exports.ts",
+    "gen-static": "node --import tsx script/gen-static.ts",
+    "build:exe": "node --import tsx script/build-exe.ts",
     "smoke": "node --import tsx test/feasibility/offline-smoke.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "esbuild": "^0.28.2",
+    "postject": "^1.0.0-alpha.6",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   },

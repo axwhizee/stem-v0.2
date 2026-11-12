@@ -11,6 +11,7 @@ import { parseStemConfig } from '../../src/core/config/index.ts'
 import { makeAgentID, parentIdOf, ROOT_AGENT_ID, textContent } from '../../src/core/model/index.ts'
 import type { PilotEvent } from '../../src/core/events/index.ts'
 import { parseModelRef } from '../../src/core/gateway/index.ts'
+import { WEB_STATIC } from '../cli/static.gen.ts'
 
 const PORT = Number(process.env.PORT ?? 4321)
 const HOST = process.env.STEM_HOST ?? '127.0.0.1'
@@ -30,6 +31,13 @@ function sendJson(res: ServerResponse, body: unknown, status = 200): void {
 }
 
 function sendStatic(res: ServerResponse, file: string): void {
+  // SEA / 单文件：import.meta.url 不在源码目录，优先用内嵌表
+  const embedded = WEB_STATIC[file]
+  if (embedded !== undefined) {
+    res.writeHead(200, { 'Content-Type': MIME[file] ?? 'text/plain; charset=utf-8', 'Cache-Control': 'no-cache' })
+    res.end(embedded)
+    return
+  }
   const p = join(HERE, file)
   if (!existsSync(p)) {
     res.writeHead(404)
@@ -137,7 +145,7 @@ async function listModels(boot: BootResult): Promise<{ refs: string[]; openEnded
   return { refs: [...refs].sort(), openEnded }
 }
 
-async function main(): Promise<void> {
+export async function startWebui(): Promise<void> {
   const boot = await bootStem({
     projectRoot: PROJECT_ROOT,
     stateStore: true,
@@ -272,7 +280,7 @@ function openSse(res: ServerResponse): void {
 }
 
 if (process.argv[1] && /webui[\\/]server\.ts$/.test(process.argv[1])) {
-  main().catch((e) => {
+  startWebui().catch((e) => {
     console.error(e)
     process.exit(1)
   })
