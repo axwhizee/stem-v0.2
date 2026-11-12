@@ -8,7 +8,6 @@ stem.db
 
 # plan is local-only
 plan.md
-prompts.md
 
 # os
 .DS_Store
